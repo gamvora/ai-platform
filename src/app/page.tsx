@@ -20,14 +20,14 @@ export default function LandingPage() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent grid place-items-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold gradient-text">Nova AI</span>
+            <span className="text-xl font-bold gradient-text">alaa ai</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login" className="btn-ghost">
-              Sign in
+              تسجيل الدخول
             </Link>
             <Link href="/register" className="btn-primary">
-              Get started <ArrowRight className="w-4 h-4" />
+              ابدأ الآن <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </nav>
@@ -37,22 +37,22 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-sm text-white/80 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Powered by Blackbox AI
+          مدعوم بواسطة Blackbox AI
         </div>
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6">
-          Your all-in-one <br />
-          <span className="gradient-text">AI creative studio</span>
+          منصتك المتكاملة <br />
+          <span className="gradient-text">للإبداع بالذكاء الاصطناعي</span>
         </h1>
         <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10">
-          Chat with advanced AI, generate stunning images, and create videos
-          from text — all in one beautifully crafted experience.
+          تحدث مع ذكاء اصطناعي متقدم، وأنشئ صورًا مذهلة ومقاطع فيديو
+          من النص — كل ذلك في تجربة واحدة متكاملة.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/register" className="btn-primary text-base px-6 py-3">
-            Start creating for free <ArrowRight className="w-4 h-4" />
+            ابدأ مجانًا <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/login" className="btn-secondary text-base px-6 py-3">
-            I have an account
+            لدي حساب بالفعل
           </Link>
         </div>
       </section>
@@ -62,20 +62,20 @@ export default function LandingPage() {
         <div className="grid md:grid-cols-3 gap-6">
           <FeatureCard
             icon={<MessageSquare className="w-6 h-6" />}
-            title="AI Chat"
-            description="Conversational AI with memory, markdown, code blocks and image understanding."
+            title="دردشة ذكية"
+            description="محادثة ذكية مع فهم للصور، ودعم تنسيق Markdown وكتل الأكواد."
             color="from-violet-500 to-fuchsia-500"
           />
           <FeatureCard
             icon={<ImageIcon className="w-6 h-6" />}
-            title="Image Generation"
-            description="Turn any idea into breathtaking visuals with state-of-the-art models."
+            title="توليد الصور"
+            description="حوّل أي فكرة إلى صور مبهرة باستخدام نماذج متقدمة."
             color="from-cyan-500 to-blue-500"
           />
           <FeatureCard
             icon={<Video className="w-6 h-6" />}
-            title="Video Generation"
-            description="Create short, cinematic videos from a simple text prompt."
+            title="توليد الفيديو"
+            description="أنشئ فيديوهات قصيرة سينمائية من وصف نصي بسيط."
             color="from-pink-500 to-rose-500"
           />
         </div>
@@ -84,29 +84,29 @@ export default function LandingPage() {
       {/* Why us */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-          Built for creators who move fast
+          مصمم للمبدعين الذين يعملون بسرعة
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           <MiniFeature
             icon={<Zap className="w-5 h-5" />}
-            title="Blazing fast"
-            description="Optimized for instant responses and smooth streaming."
+            title="سرعة عالية"
+            description="مُحسّن لاستجابات فورية وتجربة سلسة."
           />
           <MiniFeature
             icon={<Shield className="w-5 h-5" />}
-            title="Private & secure"
-            description="Your API keys stay server-side. JWT auth, rate limiting, and input validation."
+            title="خصوصية وأمان"
+            description="مفاتيح API تبقى في الخادم مع حماية JWT وتحديد المعدل والتحقق من المدخلات."
           />
           <MiniFeature
             icon={<Rocket className="w-5 h-5" />}
-            title="All-in-one"
-            description="Chat, images, and videos — no context switching between tools."
+            title="كل شيء في مكان واحد"
+            description="دردشة وصور وفيديو دون الحاجة للتنقل بين أدوات متعددة."
           />
         </div>
       </section>
 
       <footer className="border-t border-border/40 mt-20 py-8 text-center text-white/50 text-sm">
-        © {new Date().getFullYear()} Nova AI. Crafted with care.
+        © {new Date().getFullYear()} alaa ai. صُنع بعناية.
       </footer>
     </main>
   );
