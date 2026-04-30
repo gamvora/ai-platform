@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth-server';
 import { updateUser, toPublicUser } from '@/lib/db';
 import { rateLimit } from '@/lib/rateLimit';
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import crypto from 'node:crypto';
+import { getSupabase, hasSupabase } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -14,8 +13,7 @@ const ALLOWED_MIME = /^image\/(png|jpeg|webp|gif)$/;
 
 /**
  * POST /api/user/avatar   (multipart/form-data, field: file)
- * Uploads a new avatar, stores it under /public/uploads/avatars/<uid>/,
- * records the public URL on the user, and returns the updated user.
+ * Uploads a new avatar to Supabase Storage and stores the public URL on user.
  */
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -59,24 +57,57 @@ export async function POST(req: NextRequest) {
           : file.type === 'image/gif'
             ? 'gif'
             : 'jpg';
-    const safeUid = user.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const dir = path.join(process.cwd(), 'public', 'uploads', 'avatars', safeUid);
-    await fs.mkdir(dir, { recursive: true });
+    if (!hasSupabase()) {
+      return NextResponse.json(
+        {
+          error:
+            'Avatar upload requires Supabase Storage in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+        },
+        { status: 500 }
+      );
+    }
 
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Storage is not configured correctly' },
+        { status: 500 }
+      );
+    }
+
+    const safeUid = user.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const name = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
     const buf = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(dir, name), buf);
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'uploads';
+    const objectPath = `avatars/${safeUid}/${name}`;
 
-    const url = `/uploads/avatars/${safeUid}/${name}`;
+    const { error: upErr } = await supabase.storage
+      .from(bucket)
+      .upload(objectPath, buf, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      });
+
+    if (upErr) {
+      console.error('[avatar] supabase storage upload error:', upErr);
+      return NextResponse.json(
+        { error: 'Failed to upload avatar to storage' },
+        { status: 500 }
+      );
+    }
+
+    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    const url = pub?.publicUrl;
+    if (!url) {
+      return NextResponse.json(
+        { error: 'Failed to get avatar URL' },
+        { status: 500 }
+      );
+    }
+
     const updated = await updateUser(user.id, { avatarUrl: url });
     if (!updated) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Best-effort: remove the previous avatar file to keep disk tidy.
-    if (user.avatarUrl && user.avatarUrl !== url && user.avatarUrl.startsWith('/uploads/avatars/')) {
-      const prev = path.join(process.cwd(), 'public', user.avatarUrl.replace(/^\//, ''));
-      fs.rm(prev, { force: true }).catch(() => {});
     }
 
     return NextResponse.json({ user: toPublicUser(updated), url });
@@ -99,10 +130,6 @@ export async function DELETE() {
   }
 
   const updated = await updateUser(user.id, { avatarUrl: null });
-  if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/avatars/')) {
-    const prev = path.join(process.cwd(), 'public', user.avatarUrl.replace(/^\//, ''));
-    fs.rm(prev, { force: true }).catch(() => {});
-  }
 
   return NextResponse.json({ user: updated ? toPublicUser(updated) : null });
 }

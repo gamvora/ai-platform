@@ -103,5 +103,14 @@
     "avatarUrl": null,
     "preferences": null,
     "createdAt": "2026-04-29T21:48:21.083Z"
+  },
+  {
+    "id": "873fe10b-03a6-4055-a6fb-117f89279f62",
+    "email": "psblue99@gmail.com",
+    "name": "pslbuezz",
+    "passwordHash": "$2a$10$y5CgvAxfXLNJfD4FayMBsOORDBqrvpJ3X2Q7duUjr1UirRddMdFIq",
+    "avatarUrl": null,
+    "preferences": null,
+    "createdAt": "2026-04-30T22:15:16.763Z"
   }
 ]

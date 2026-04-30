@@ -1,0 +1,22 @@
+[
+  {
+    "id": "e00171af-4d11-48fd-bb94-500e90198769",
+    "userId": "873fe10b-03a6-4055-a6fb-117f89279f62",
+    "title": "hi",
+    "messages": [
+      {
+        "role": "user",
+        "content": "hi",
+        "images": [],
+        "createdAt": "2026-04-30T22:26:00.448Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi there! 👋 How can I help you today?",
+        "createdAt": "2026-04-30T22:26:03.567Z"
+      }
+    ],
+    "createdAt": "2026-04-30T22:26:00.430Z",
+    "updatedAt": "2026-04-30T22:26:03.567Z"
+  }
+]

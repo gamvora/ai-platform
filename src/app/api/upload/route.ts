@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth-server';
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import crypto from 'node:crypto';
+import { getSupabase, hasSupabase } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -52,16 +51,53 @@ export async function POST(req: NextRequest) {
 
     const safeUid = user.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const name = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
-
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', safeUid);
-    await fs.mkdir(uploadsDir, { recursive: true });
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fullPath = path.join(uploadsDir, name);
-    await fs.writeFile(fullPath, buffer);
 
-    const url = `/uploads/${safeUid}/${name}`;
-    return NextResponse.json({ url });
+    // Serverless-safe path: use Supabase Storage when configured (required on Vercel).
+    if (hasSupabase()) {
+      const supabase = getSupabase();
+      const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'uploads';
+      if (!supabase) {
+        return NextResponse.json(
+          { error: 'Storage is not configured correctly' },
+          { status: 500 }
+        );
+      }
+
+      const objectPath = `${safeUid}/${name}`;
+      const { error: upErr } = await supabase.storage
+        .from(bucket)
+        .upload(objectPath, buffer, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: false,
+        });
+
+      if (upErr) {
+        console.error('[upload] supabase storage upload error:', upErr);
+        return NextResponse.json(
+          { error: 'Failed to upload image to storage' },
+          { status: 500 }
+        );
+      }
+
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+      if (!pub?.publicUrl) {
+        return NextResponse.json(
+          { error: 'Failed to get public image URL' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ url: pub.publicUrl });
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          'File upload requires Supabase Storage in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+      },
+      { status: 500 }
+    );
   } catch (err: any) {
     console.error('[upload]', err);
     return NextResponse.json(
