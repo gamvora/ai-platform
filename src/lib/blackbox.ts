@@ -104,7 +104,35 @@ export async function toExternalImageRef(
   if (ref.startsWith('data:')) return ref;
 
   // Absolute URL.
-  if (/^https?:\/\//i.test(ref)) return ref;
+  // Try to inline as data URI so upstream vision models can always access bytes,
+  // even when the original URL is private, expired, or blocked.
+  if (/^https?:\/\//i.test(ref)) {
+    try {
+      const res = await fetch(ref, {
+        headers: {
+          'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)',
+          accept: 'image/*,*/*;q=0.8',
+        },
+      });
+      if (res.ok) {
+        const ctype = (res.headers.get('content-type') || '').toLowerCase();
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length > 256) {
+          const mime =
+            ctype.startsWith('image/')
+              ? ctype.split(';')[0]
+              : 'image/jpeg';
+          return `data:${mime};base64,${buf.toString('base64')}`;
+        }
+      }
+    } catch (err: any) {
+      console.warn(
+        '[blackbox.toExternalImageRef] remote fetch->dataURI failed, using URL:',
+        err?.message
+      );
+    }
+    return ref;
+  }
 
   // Relative `/uploads/...` path. Prefer base64 data URI so the external AI
   // can decode it directly without a network round-trip to our host.

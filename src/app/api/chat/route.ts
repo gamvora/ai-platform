@@ -132,8 +132,13 @@ export async function POST(req: NextRequest) {
         'Sorry, I got no response.';
     } catch (err: any) {
       console.error('[chat] Blackbox API error:', err?.message);
+      const hasImages = Array.isArray(images) && images.length > 0;
       return NextResponse.json(
-        { error: 'AI service is temporarily unavailable. Please try again.' },
+        {
+          error: hasImages
+            ? 'Image analysis failed. Please verify the uploaded image URL is accessible and try again.'
+            : 'AI service is temporarily unavailable. Please try again.',
+        },
         { status: 502 }
       );
     }

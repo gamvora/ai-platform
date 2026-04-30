@@ -1,21 +1,7 @@
-# TODO - Mobile Full Support + Bot Avatar
+# TODO - Fix chat image analysis failures
 
-## Bot Avatar Customization
-- [x] Analyze current files and requirements
-- [x] Add `botAvatarUrl` to user preference types
-- [x] Extend preferences API sanitization/defaults to support `botAvatarUrl`
-- [x] Update chat page to fetch user preferences and pass bot avatar URL to messages
-- [x] Update ChatMessage component to render custom bot avatar image (fallback to icon)
-- [x] Add Settings > Preferences UI for:
-  - [x] choosing from a large preset gallery
-  - [x] uploading custom image
-  - [x] saving selected URL in preferences
-
-## Mobile Full Support
-- [ ] Improve global mobile CSS (safe-area, tap targets, overflow guards)
-- [ ] Improve Sidebar mobile drawer UX
-- [ ] Improve ChatInput mobile UX
-- [ ] Improve ChatMessage mobile readability
-- [ ] Improve Chat page mobile layout
-- [ ] Improve Dashboard mobile layout
-- [ ] Run critical-path mobile testing (chat/settings/dashboard)
+- [x] 1) Investigate `/api/chat` and `toExternalImageRef` image handling path
+- [x] 2) Update `src/lib/blackbox.ts` to convert external image URLs to data URI when possible
+- [x] 3) Improve `/api/chat/route.ts` error handling for image-specific failures
+- [ ] 4) Commit and push fixes
+- [ ] 5) Validate critical-path behavior (chat with image + chat text-only)
