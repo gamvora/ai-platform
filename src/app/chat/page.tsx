@@ -39,7 +39,7 @@ export default function ChatPage() {
   async function loadConversation(id: string) {
     // Guard: bail out on obviously-bad ids so we never hit /api/conversations/undefined
     if (!id || id === 'undefined' || id === 'null') {
-      toast.error('That conversation link is invalid.');
+      toast.error('رابط المحادثة غير صالح.');
       newChat();
       return;
     }
@@ -51,13 +51,13 @@ export default function ChatPage() {
         // Stale id (conversation was deleted, belongs to a different account,
         // or sidebar rendered before the latest refresh). Don't error-toast —
         // just reset to a fresh chat and let the user continue.
-        toast.info?.('That conversation no longer exists. Started a new chat.');
+        toast.info?.('هذه المحادثة لم تعد موجودة. بدأنا محادثة جديدة.');
         newChat();
         setRefreshKey((k) => k + 1);
         return;
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load');
+      if (!res.ok) throw new Error(data.error || 'فشل تحميل المحادثة');
       setConversationId(id);
       setMessages(
         (data.conversation.messages || []).map((m: any) => ({
@@ -68,7 +68,7 @@ export default function ChatPage() {
         }))
       );
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load conversation');
+      toast.error(err.message || 'تعذّر تحميل المحادثة');
     }
   }
 
@@ -97,7 +97,7 @@ export default function ChatPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to get response');
+      if (!res.ok) throw new Error(data.error || 'فشل الحصول على الرد');
       setConversationId(data.conversationId);
       setMessages((prev) => [
         ...prev,
@@ -110,12 +110,12 @@ export default function ChatPage() {
       ]);
       setRefreshKey((k) => k + 1);
     } catch (err: any) {
-      toast.error(err.message || 'Something went wrong');
+      toast.error(err.message || 'حدث خطأ غير متوقع');
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ **Error**: ${err.message || 'Something went wrong.'}`,
+          content: `⚠️ **خطأ**: ${err.message || 'حدث خطأ غير متوقع.'}`,
         },
       ]);
     } finally {
@@ -137,7 +137,7 @@ export default function ChatPage() {
         <header className="h-14 border-b border-border flex items-center px-3 sm:px-4 md:px-6 shrink-0 glass">
           <div className="flex items-center gap-2 ml-12 md:ml-0">
             <MessageSquare className="w-4 h-4 text-primary-500" />
-            <span className="font-medium">Nova Chat</span>
+            <span className="font-medium">دردشة alaa ai</span>
           </div>
         </header>
 
@@ -169,10 +169,10 @@ export default function ChatPage() {
 
 function EmptyState({ onSuggest }: { onSuggest: (s: string) => void }) {
   const suggestions = [
-    'Explain quantum computing in simple terms',
-    'Write a TypeScript function to debounce events',
-    'Give me 5 creative product names for a coffee brand',
-    'Plan a 3-day itinerary for Kyoto',
+    'اشرح الحوسبة الكمومية بطريقة بسيطة',
+    'اكتب دالة TypeScript لتقليل تكرار الأحداث (debounce)',
+    'اعطني 5 أسماء إبداعية لعلامة قهوة',
+    'خطط لي رحلة 3 أيام إلى كيوتو',
   ];
   return (
     <div className="h-full flex flex-col items-center justify-center px-4 py-10">
@@ -180,10 +180,10 @@ function EmptyState({ onSuggest }: { onSuggest: (s: string) => void }) {
         <Sparkles className="w-8 h-8 text-white" />
       </div>
       <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">
-        How can I help you today?
+        كيف يمكنني مساعدتك اليوم؟
       </h1>
       <p className="text-white/60 mb-10 text-center max-w-lg">
-        Ask anything, upload images for analysis, or generate visuals and videos.
+        اسأل أي شيء، وارفع صورًا للتحليل، أو أنشئ صورًا ومقاطع فيديو.
       </p>
 
       <div className="grid sm:grid-cols-2 gap-3 w-full max-w-2xl mb-6">
@@ -200,11 +200,11 @@ function EmptyState({ onSuggest }: { onSuggest: (s: string) => void }) {
 
       <div className="flex gap-2 text-xs text-white/50">
         <span className="inline-flex items-center gap-1">
-          <ImageIcon className="w-3 h-3" /> Image gen
+          <ImageIcon className="w-3 h-3" /> توليد الصور
         </span>
         <span>•</span>
         <span className="inline-flex items-center gap-1">
-          <Video className="w-3 h-3" /> Video gen
+          <Video className="w-3 h-3" /> توليد الفيديو
         </span>
       </div>
     </div>

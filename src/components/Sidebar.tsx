@@ -78,7 +78,7 @@ export default function Sidebar({
           const normalized: Conversation[] = raw
             .map((c) => ({
               id: c.id ?? c._id ?? '',
-              title: c.title ?? 'Untitled',
+              title: c.title ?? 'بدون عنوان',
               updatedAt: c.updatedAt ?? c.createdAt ?? new Date().toISOString(),
             }))
             .filter((c) => !!c.id);
@@ -90,15 +90,15 @@ export default function Sidebar({
 
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm('Delete this conversation?')) return;
+    if (!confirm('حذف هذه المحادثة؟')) return;
     try {
       const res = await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      if (!res.ok) throw new Error('فشل الحذف');
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      toast.success('Conversation deleted');
+      toast.success('تم حذف المحادثة');
       if (activeConversationId === id) onNewChat?.();
     } catch {
-      toast.error('Could not delete conversation');
+      toast.error('تعذّر حذف المحادثة');
     }
   }
 
@@ -109,17 +109,17 @@ export default function Sidebar({
   }
 
   const navItems = [
-    { href: '/chat', label: 'Chat', icon: MessageSquare },
-    { href: '/image', label: 'Images', icon: ImageIcon },
-    { href: '/edit', label: 'Edit', icon: Wand2 },
-    { href: '/face-swap', label: 'Face swap', icon: Users },
-    { href: '/outfit-swap', label: 'Outfit swap', icon: Shirt },
-    { href: '/upscale', label: 'Upscale', icon: Maximize2 },
-    { href: '/remove-bg', label: 'Remove BG', icon: Scissors },
-    { href: '/sketch', label: 'Sketch → Art', icon: Pencil },
-    { href: '/video', label: 'Video', icon: Video },
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/chat', label: 'الدردشة', icon: MessageSquare },
+    { href: '/image', label: 'الصور', icon: ImageIcon },
+    { href: '/edit', label: 'تعديل الصور', icon: Wand2 },
+    { href: '/face-swap', label: 'تبديل الوجه', icon: Users },
+    { href: '/outfit-swap', label: 'تبديل الملابس', icon: Shirt },
+    { href: '/upscale', label: 'تحسين الجودة', icon: Maximize2 },
+    { href: '/remove-bg', label: 'إزالة الخلفية', icon: Scissors },
+    { href: '/sketch', label: 'رسم ← فن', icon: Pencil },
+    { href: '/video', label: 'الفيديو', icon: Video },
+    { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+    { href: '/settings', label: 'الإعدادات', icon: Settings },
   ];
 
   const content = (
@@ -130,7 +130,7 @@ export default function Sidebar({
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent grid place-items-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold gradient-text">Nova AI</span>
+          <span className="font-bold gradient-text">alaa ai</span>
         </Link>
         <button
           className="md:hidden btn-ghost p-2"
@@ -173,16 +173,16 @@ export default function Sidebar({
               onClick={onNewChat}
               className="btn-secondary w-full justify-start text-sm"
             >
-              <Plus className="w-4 h-4" /> New chat
+              <Plus className="w-4 h-4" /> محادثة جديدة
             </button>
           </div>
           <div className="px-2 pt-4 pb-2 text-xs uppercase tracking-wider text-white/40">
-            Recent
+            الأحدث
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
             {conversations.length === 0 && (
               <p className="text-sm text-white/40 px-2 py-3">
-                No conversations yet
+                لا توجد محادثات بعد
               </p>
             )}
             {conversations.map((c) => (
@@ -226,7 +226,7 @@ export default function Sidebar({
             <button
               onClick={handleLogout}
               className="text-white/50 hover:text-rose-400 transition"
-              title="Logout"
+              title="تسجيل الخروج"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -242,7 +242,7 @@ export default function Sidebar({
       <button
         className="md:hidden fixed top-3 left-3 z-30 p-2.5 rounded-xl glass border border-border/80"
         onClick={() => setOpen(true)}
-        aria-label="Open menu"
+        aria-label="فتح القائمة"
       >
         <Menu className="w-5 h-5" />
       </button>
