@@ -75,7 +75,11 @@ export async function POST(req: NextRequest) {
       if (upErr) {
         console.error('[upload] supabase storage upload error:', upErr);
         return NextResponse.json(
-          { error: 'Failed to upload image to storage' },
+          {
+            error:
+              upErr.message ||
+              'Failed to upload image to storage. Check bucket existence and storage policies.',
+          },
           { status: 500 }
         );
       }
