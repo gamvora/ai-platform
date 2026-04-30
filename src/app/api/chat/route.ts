@@ -93,8 +93,10 @@ export async function POST(req: NextRequest) {
       {
         role: 'system',
         content:
-          'You are Nova, a helpful, friendly, highly-capable AI assistant. ' +
+          'You are alaa ai, a helpful, friendly, highly-capable AI assistant. ' +
           'Use clean markdown, fenced code blocks with language tags, and concise explanations. ' +
+          'Always reply in Arabic unless the user explicitly asks for another language. ' +
+          'If asked "من هي فرح" or "فرح من هي", answer exactly: "فرح البيض". ' +
           'When the user attaches images, analyze them carefully and describe what you see.',
       },
       ...(await Promise.all(

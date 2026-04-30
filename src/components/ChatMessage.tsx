@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { motion } from 'framer-motion';
-import { Copy, Check, Sparkles, User as UserIcon } from 'lucide-react';
+import { Copy, Check, Sparkles, User as UserIcon, Volume2, Square } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ export interface ChatMessageData {
 
 export default function ChatMessage({ message }: { message: ChatMessageData }) {
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const toast = useToast();
   const isUser = message.role === 'user';
 
@@ -27,11 +28,41 @@ export default function ChatMessage({ message }: { message: ChatMessageData }) {
     try {
       await navigator.clipboard.writeText(message.content);
       setCopied(true);
-      toast.success('Copied to clipboard');
+      toast.success('تم النسخ');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Could not copy');
+      toast.error('تعذر النسخ');
     }
+  }
+
+  function speakMessage() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.error('المتصفح لا يدعم القراءة الصوتية');
+      return;
+    }
+
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+
+    const text = (message.content || '').replace(/[#*_`>-]/g, ' ').trim();
+    if (!text) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ar-SA';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => {
+      setSpeaking(false);
+      toast.error('تعذر تشغيل الصوت');
+    };
+
+    setSpeaking(true);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   }
 
   return (
@@ -136,11 +167,25 @@ export default function ChatMessage({ message }: { message: ChatMessageData }) {
             >
               {copied ? (
                 <>
-                  <Check className="w-3 h-3" /> Copied
+                  <Check className="w-3 h-3" /> تم النسخ
                 </>
               ) : (
                 <>
-                  <Copy className="w-3 h-3" /> Copy
+                  <Copy className="w-3 h-3" /> نسخ
+                </>
+              )}
+            </button>
+            <button
+              onClick={speakMessage}
+              className="text-xs text-white/60 hover:text-white flex items-center gap-1"
+            >
+              {speaking ? (
+                <>
+                  <Square className="w-3 h-3" /> إيقاف الصوت
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-3 h-3" /> قراءة الرد
                 </>
               )}
             </button>

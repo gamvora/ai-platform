@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Paperclip, Send, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Paperclip, Send, X, Loader2, Image as ImageIcon, Mic, Square } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 interface ChatInputProps {
@@ -14,8 +14,19 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const SR =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+    setSpeechSupported(!!SR);
+  }, []);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -67,6 +78,55 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   }
 
+  function toggleVoiceInput() {
+    const SR =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+    if (!SR) {
+      toast.error('المتصفح لا يدعم الإدخال الصوتي');
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const rec = new SR();
+    recognitionRef.current = rec;
+    rec.lang = 'ar-SA';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.continuous = true;
+
+    rec.onresult = (event: any) => {
+      let finalTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        finalTranscript += event.results[i][0].transcript + ' ';
+      }
+      const next = finalTranscript.trim();
+      setText(next);
+      if (textareaRef.current) {
+        textareaRef.current.value = next;
+        autoGrow(textareaRef.current);
+      }
+    };
+
+    rec.onerror = () => {
+      setIsListening(false);
+      toast.error('حدث خطأ أثناء التعرف على الصوت');
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    rec.start();
+    setIsListening(true);
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto px-2 sm:px-0 pb-[max(8px,env(safe-area-inset-bottom))]">
       {/* Image previews */}
@@ -112,7 +172,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Message Nova AI…"
+          placeholder="اكتب رسالتك إلى نوفا..."
           className="flex-1 bg-transparent resize-none outline-none px-1.5 sm:px-2 py-2.5 text-[15px] sm:text-base text-white placeholder:text-white/40 max-h-[200px]"
           value={text}
           onChange={(e) => {
@@ -124,10 +184,19 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
         />
 
         <button
+          onClick={toggleVoiceInput}
+          disabled={disabled || !speechSupported}
+          className="btn-ghost p-2.5 shrink-0 min-h-[44px] min-w-[44px]"
+          title={isListening ? 'إيقاف التسجيل' : 'تسجيل صوتي'}
+        >
+          {isListening ? <Square className="w-5 h-5 text-rose-400" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        <button
           onClick={submit}
           disabled={disabled || (!text.trim() && images.length === 0)}
           className="btn-primary p-2.5 shrink-0 min-h-[44px] min-w-[44px]"
-          title="Send"
+          title="إرسال"
         >
           {disabled ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -137,8 +206,9 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
         </button>
       </div>
       <p className="text-[11px] sm:text-xs text-white/40 text-center mt-2 px-2">
-        <ImageIcon className="inline w-3 h-3 mr-1" />
-        You can attach images. Nova AI can analyze them.
+        <ImageIcon className="inline w-3 h-3 ml-1" />
+        يمكنك إرفاق الصور، ونوفا يستطيع تحليلها.
+        {speechSupported ? ' كما يمكنك التحدث صوتيًا.' : ' (الإدخال الصوتي غير مدعوم في هذا المتصفح).'}
       </p>
     </div>
   );
