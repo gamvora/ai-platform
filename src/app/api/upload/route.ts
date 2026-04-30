@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
     // Serverless-safe path: use Supabase Storage when configured (required on Vercel).
     if (hasSupabase()) {
       const supabase = getSupabase();
-      const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'uploads';
+      const bucket =
+        process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'bucket ai';
       if (!supabase) {
         return NextResponse.json(
           { error: 'Storage is not configured correctly' },
