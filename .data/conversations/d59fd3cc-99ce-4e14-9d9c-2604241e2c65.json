@@ -1,0 +1,205 @@
+[
+  {
+    "id": "4ad1ece1-6efe-48cb-9ce4-d640211f177e",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "hello",
+    "messages": [],
+    "createdAt": "2026-04-29T18:07:52.354Z",
+    "updatedAt": "2026-04-29T18:07:52.354Z"
+  },
+  {
+    "id": "a4357b14-61f2-4d2c-8454-767736774222",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "hello",
+    "messages": [],
+    "createdAt": "2026-04-29T18:09:26.616Z",
+    "updatedAt": "2026-04-29T18:09:26.616Z"
+  },
+  {
+    "id": "eeca1dd4-e4f4-42ee-af4a-5c40b0fc5298",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "hello",
+    "messages": [
+      {
+        "role": "user",
+        "content": "hello",
+        "images": [],
+        "createdAt": "2026-04-29T18:16:09.340Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Hey! 👋  \nHow can I help you today?",
+        "createdAt": "2026-04-29T18:16:13.435Z"
+      },
+      {
+        "role": "user",
+        "content": "what ur model",
+        "images": [],
+        "createdAt": "2026-04-29T18:16:19.554Z"
+      },
+      {
+        "role": "assistant",
+        "content": "I’m **Nova**, an AI assistant running on OpenAI technology.  \nIf you want, I can also explain what I’m good at (coding, writing, debugging, analysis, etc.).",
+        "createdAt": "2026-04-29T18:16:23.389Z"
+      }
+    ],
+    "createdAt": "2026-04-29T18:16:09.331Z",
+    "updatedAt": "2026-04-29T18:16:23.389Z"
+  },
+  {
+    "id": "fc0cc702-b0da-4c5d-a444-595f27ab20a7",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "what is this",
+    "messages": [
+      {
+        "role": "user",
+        "content": "what is this",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777490849032-d18d0118f90c.png"
+        ],
+        "createdAt": "2026-04-29T19:27:33.248Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Could you share a bit more context (or upload the image/text/object you’re referring to)?  \n“**What is this**” could mean many things, and I want to give you the right answer.",
+        "createdAt": "2026-04-29T19:27:37.150Z"
+      },
+      {
+        "role": "user",
+        "content": "solve this",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777490869047-6b101eb2a6ef.png"
+        ],
+        "createdAt": "2026-04-29T19:27:52.794Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Sure — I can help! Please paste the problem (or upload a clear image of it), and I’ll solve it step by step.",
+        "createdAt": "2026-04-29T19:27:56.656Z"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777490887652-174aea899459.png"
+        ],
+        "createdAt": "2026-04-29T19:28:08.467Z"
+      },
+      {
+        "role": "assistant",
+        "content": "I didn’t receive the problem yet.  \nPlease send the question (text or image), and I’ll solve it right away.",
+        "createdAt": "2026-04-29T19:28:12.274Z"
+      }
+    ],
+    "createdAt": "2026-04-29T19:27:33.195Z",
+    "updatedAt": "2026-04-29T19:28:12.274Z"
+  },
+  {
+    "id": "08210afa-4069-4a43-8ae5-885e4de72a37",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "fix",
+    "messages": [
+      {
+        "role": "user",
+        "content": "fix",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777491907693-f67174439464.png"
+        ],
+        "createdAt": "2026-04-29T19:45:10.126Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Great — here’s the corrected fill-in using the word bank:\n\n**Word bank:** `advertising - mix - price - products - promotional`\n\n### Answers\n1. **promotional**  \n2. **advertising**  \n3. **mix**  \n4. **price**  \n5. **products**\n\n### Completed paragraph\nMarie Curie Cancer Care is reviewing its marketing strategy in an attempt to attract a wider audience. It will stop using **promotional** techniques, such as mailings and events. Television **advertising** and face-to-face marketing are both being tested in a bid to supplement the charity’s typical over 60s donor base with younger supporters. If tests **products** prove successful, they will become part of Marie Curie’s marketing **mix**.  \nIn addition, Marie Curie Cancer Care is expanding its online shop. Stylish handbags at a **price** of £10 are attractive to younger customers. Marie Curie Cancer Care **products** says it is responding to customers’ needs and wants by selling elegant fashionwear.\n\n> Note: The sentence with “tests … prove successful” seems to have a typo in the worksheet. Grammatically, none of the given words fits perfectly there except likely a missing word like “these.”  \nIf you want, I can rewrite the whole paragraph in fully correct English.",
+        "createdAt": "2026-04-29T19:45:16.668Z"
+      },
+      {
+        "role": "user",
+        "content": "حل",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777491948972-79b945b5c358.png"
+        ],
+        "createdAt": "2026-04-29T19:45:54.872Z"
+      },
+      {
+        "role": "assistant",
+        "content": "أكيد، هذا الحل الصحيح للكلمات من القائمة:\n\n**[advertising - mix - price - products - promotional]**\n\n1) **promotional**  \n2) **advertising**  \n3) **mix**  \n4) **price**  \n5) **products**\n\n✅ **الإجابات النهائية بالترتيب:**  \n**promotional / advertising / mix / price / products**",
+        "createdAt": "2026-04-29T19:46:00.236Z"
+      }
+    ],
+    "createdAt": "2026-04-29T19:45:10.114Z",
+    "updatedAt": "2026-04-29T19:46:00.236Z"
+  },
+  {
+    "id": "3db2edb7-99a9-463b-8621-c2d17614d95d",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "اه",
+    "messages": [
+      {
+        "role": "user",
+        "content": "اه",
+        "images": [],
+        "createdAt": "2026-04-30T20:49:18.300Z"
+      },
+      {
+        "role": "assistant",
+        "content": "أهلًا! 👋  \nكيف أقدر أساعدك اليوم؟",
+        "createdAt": "2026-04-30T20:49:20.731Z"
+      },
+      {
+        "role": "user",
+        "content": "من ها",
+        "images": [
+          "/uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777582169096-6a12af8b6f20.jpg"
+        ],
+        "createdAt": "2026-04-30T20:49:32.834Z"
+      },
+      {
+        "role": "assistant",
+        "content": "أقدر أوصف الصورة، لكن ما أقدر أحدد **من هو الشخص** أو أتعرف على هويته.\n\nاللي ظاهر بالصورة:\n- رجل يرتدي **تيشيرت وردي**.\n- الخلفية **سماوية/تركوازية**.\n- الوجه مغطّى/مموّه بمستطيل، لذلك الملامح غير واضحة.\n- يده قريبة من وجهه وكأنه في وضعية تفكير.\n\nإذا تحب، أقدر أساعدك في:\n- كتابة وصف مناسب للصورة (مثلاً لمنشور أو تصميم).\n- تحسين الصورة أو اقتراح تعديلاتها.\n- تحليل الأسلوب البصري والألوان.",
+        "createdAt": "2026-04-30T20:49:38.013Z"
+      }
+    ],
+    "createdAt": "2026-04-30T20:49:18.293Z",
+    "updatedAt": "2026-04-30T20:49:38.013Z"
+  },
+  {
+    "id": "fabb0457-7f02-48bd-ba6f-06c35e59b002",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "اه",
+    "messages": [
+      {
+        "role": "user",
+        "content": "اه",
+        "images": [],
+        "createdAt": "2026-04-30T21:20:49.038Z"
+      },
+      {
+        "role": "assistant",
+        "content": "أهلاً! 😊\n\nكيف يمكنني مساعدتك اليوم؟",
+        "createdAt": "2026-04-30T21:20:52.675Z"
+      }
+    ],
+    "createdAt": "2026-04-30T21:20:49.015Z",
+    "updatedAt": "2026-04-30T21:20:52.675Z"
+  },
+  {
+    "id": "f474bc72-a639-4ccb-914b-e1edc0034b01",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "اخ",
+    "messages": [
+      {
+        "role": "user",
+        "content": "اخ",
+        "images": [],
+        "createdAt": "2026-04-30T21:28:30.636Z"
+      },
+      {
+        "role": "assistant",
+        "content": "أهلاً! 😊\n\nكيف يمكنني مساعدتك اليوم؟",
+        "createdAt": "2026-04-30T21:28:35.579Z"
+      }
+    ],
+    "createdAt": "2026-04-30T21:28:30.628Z",
+    "updatedAt": "2026-04-30T21:28:35.579Z"
+  }
+]

@@ -1,0 +1,226 @@
+[
+  {
+    "id": "0704db49-2a41-4776-a00a-2f6786f91e2a",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "قطة",
+    "url": "/generated/0704db49-2a41-4776-a00a-2f6786f91e2a.jpg",
+    "createdAt": "2026-04-30T21:29:35.539Z"
+  },
+  {
+    "id": "56543d00-f23d-4070-ac4a-194c7cc7be86",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "horse playing gitar",
+    "url": "https://image.pollinations.ai/prompt/horse%20playing%20gitar?width=1024&height=1024&seed=232386&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-30T20:47:01.247Z"
+  },
+  {
+    "id": "95d5d242-713f-45a4-a842-56cb4088eb13",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[face-swap] Perform a realistic face-swap: replace the face of the main subject in the source image with the face from the reference image, while keeping pose, lighting, body, and background unchanged. Preserve skin tone blending and sharp facial features. Target face reference: /uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777581865875-bad9ff33f239.jpg.",
+    "url": "/generated/95d5d242-713f-45a4-a842-56cb4088eb13.jpg",
+    "createdAt": "2026-04-30T20:44:42.208Z"
+  },
+  {
+    "id": "ac6eeb84-9a1b-4581-82b4-e14d717bda57",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[face-swap] Perform a realistic face-swap: replace the face of the main subject in the source image with the face from the reference image, while keeping pose, lighting, body, and background unchanged. Preserve skin tone blending and sharp facial features. Target face reference: /uploads/d59fd3cc-99ce-4e14-9d9c-2604241e2c65/1777581865875-bad9ff33f239.jpg.",
+    "url": "/generated/ac6eeb84-9a1b-4581-82b4-e14d717bda57.jpg",
+    "createdAt": "2026-04-30T20:44:32.217Z"
+  },
+  {
+    "id": "d229e6f0-1bc0-4393-a97d-32454b4f61ee",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[remove-bg] Remove the background from this image and replace it with a clean, pure white seamless studio background. Preserve the main subject with crisp edges, soft professional lighting, no shadows beneath.",
+    "url": "/generated/d229e6f0-1bc0-4393-a97d-32454b4f61ee.jpg",
+    "createdAt": "2026-04-30T20:37:44.486Z"
+  },
+  {
+    "id": "c6947aa4-8588-40f4-ad44-2e2a93d4dfb6",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "horse plaing piano",
+    "url": "/generated/c6947aa4-8588-40f4-ad44-2e2a93d4dfb6.jpg",
+    "createdAt": "2026-04-30T20:36:14.387Z"
+  },
+  {
+    "id": "21fbc228-39cb-4cb9-a98e-38978d30be1e",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "horse playing piano",
+    "url": "https://image.pollinations.ai/prompt/horse%20playing%20piano?width=1024&height=1024&seed=127686&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-30T20:37:09.179Z"
+  },
+  {
+    "id": "8812d648-e7cf-4484-9920-5ca8dd20e3d8",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "cat flying",
+    "url": "/generated/8812d648-e7cf-4484-9920-5ca8dd20e3d8.jpg",
+    "createdAt": "2026-04-30T20:35:54.384Z"
+  },
+  {
+    "id": "f2c3cf2c-ddd1-4c21-9926-564f4b526035",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[upscale] Enhance and upscale this image to ultra-high resolution. Sharpen all edges, recover lost detail, remove compression artifacts, boost clarity, preserve colors, natural skin texture, 4k photorealistic quality.",
+    "url": "/generated/f2c3cf2c-ddd1-4c21-9926-564f4b526035.jpg",
+    "createdAt": "2026-04-30T20:32:31.223Z"
+  },
+  {
+    "id": "cbfb6051-a51b-4543-9a0b-ffcd1d941623",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[upscale] Enhance and upscale this image to ultra-high resolution. Sharpen all edges, recover lost detail, remove compression artifacts, boost clarity, preserve colors, natural skin texture, 4k photorealistic quality.",
+    "url": "https://image.pollinations.ai/prompt/A%20heavily%20pixelated%2C%20abstract%20close-up%20portrait%20fragment%20with%20a%20large%20square%20blur%20censoring%20the%20center.%20Around%20the%20edges%2C%20hints%20of%20a%20human%20face%20appear%20on%20the%20right%E2%80%94possibly%20cheek%20and%20ear%20in%20pale%20skin%20tones%E2%80%94while%20the%20lower-left%20shows%20vivid%20red%20and%20magenta%20fabric%20with%20black%20shadows%2C%20suggesting%20patterned%20clothing.%20The%20background%20is%20dark%20and%20noisy%2C%20with%20grainy%20digital%20artifacts%20and%20muted%20blacks%2C%20browns%2C%20and%20deep%20reds.%20Lighting%20feels%20low%20and%20uneven%2C%20with%20soft%20highlights%20on%20skin%20and%20cloth.%20Camera%20framing%20is%20extremely%20tight%2C%20straight-on%2C%20and%20cropped%2C%20creating%20a%20claustrophobic%20composition.%20Artistic%20style%3A%20glitchy%20lo-fi%20digital%20image%2C%20censored%2C%20surveillance-like%2C%20abstract%20expression%20through%20compression%20noise%20and%20color%20bleed..%20Transformation%3A%20Enhance%20and%20upscale%20this%20image%20to%20ultra-high%20resolution.%20Sharpen%20all%20edges%2C%20recover%20lost%20detail%2C%20remove%20compression%20artifacts%2C%20boost%20clarity%2C%20preserve%20colors%2C%20natural%20skin%20texture%2C%204k%20photorealistic%20quality..%20High%20quality%2C%20detailed%2C%20coherent.?width=1024&height=1024&seed=948614&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-30T20:12:49.039Z"
+  },
+  {
+    "id": "9895c950-821b-43a5-b088-4de665702280",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "genearate a cat",
+    "url": "/generated/9895c950-821b-43a5-b088-4de665702280.jpg",
+    "createdAt": "2026-04-30T20:10:49.307Z"
+  },
+  {
+    "id": "317207f0-a369-4af1-bb7b-1283c0a7cd01",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "cat superman",
+    "url": "/generated/317207f0-a369-4af1-bb7b-1283c0a7cd01.jpg",
+    "createdAt": "2026-04-30T13:54:22.468Z"
+  },
+  {
+    "id": "57c05925-2778-430a-95d1-e65618570fca",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "cat",
+    "url": "https://image.pollinations.ai/prompt/cat?width=1024&height=1024&seed=128600&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T21:53:24.538Z"
+  },
+  {
+    "id": "5e83faa4-2919-4dae-91cc-002077cf28d5",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "ballon",
+    "url": "https://image.pollinations.ai/prompt/ballon?width=1024&height=1024&seed=338591&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T21:38:10.030Z"
+  },
+  {
+    "id": "d9d6e4a8-3100-408f-8f7e-d273194b8b6a",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "edit",
+    "url": "https://image.pollinations.ai/prompt/Dark-mode%20software%20interface%20screenshot%20with%20a%20sleek%2C%20futuristic%20UI.%20Two%20large%20side-by-side%20rectangular%20cards%20dominate%20the%20lower%20center%2C%20each%20with%20thin%20glowing%20borders%20and%20white%20sans-serif%20text%3B%20the%20right%20card%20has%20a%20bright%20blue%20text-selection%20highlight%20near%20the%20bottom.%20Small%20broken-image%20icons%20appear%20at%20the%20top-left%20of%20both%20cards.%20Above%20them%2C%20partial%20upload%20panels%20and%20faint%20helper%20text%20are%20visible.%20Background%20is%20a%20deep%20charcoal-to-black%20gradient%20with%20subtle%20vignetting%20and%20soft%20glow%20effects.%20Color%20palette%3A%20black%2C%20navy%2C%20gray%2C%20white%2C%20and%20electric%20blue%20accents.%20Lighting%20is%20low-key%2C%20screen-lit%2C%20high%20contrast%2C%20crisp%20digital%20clarity.%20Camera%20angle%20is%20straight-on%2C%20eye-level%20desktop%20capture.%20Style%3A%20modern%20product%20UI%20screenshot%2C%20cyber-minimal%2C%20high-resolution%20tech%20aesthetic..%20Transformation%3A%20edit.%20High%20quality%2C%20detailed%2C%20coherent.?width=1024&height=1024&seed=418548&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T21:37:33.150Z"
+  },
+  {
+    "id": "034547ec-fba4-4dfa-9779-beab8300e70e",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[upscale] Enhance and upscale this image to ultra-high resolution. Sharpen all edges, recover lost detail, remove compression artifacts, boost clarity, preserve colors, natural skin texture, 4k photorealistic quality.",
+    "url": "https://image.pollinations.ai/prompt/A%20heavily%20pixelated%2C%20abstract%20close-up%20portrait%20with%20the%20face%20obscured%20by%20a%20large%20soft-edged%20square%20blur%20in%20muted%20taupe%20and%20rose%20tones%20at%20the%20center.%20Along%20the%20right%20edge%2C%20a%20narrow%20strip%20suggests%20pale%20skin%20and%20dark%20hair%3B%20the%20lower%20left%20shows%20vivid%20magenta-red%20fabric%20with%20hints%20of%20yellow%20and%20black%20patterning%2C%20like%20a%20colorful%20garment.%20The%20subject%20appears%20front-facing%20but%20indiscernible%20due%20to%20censorship-like%20masking.%20Background%20is%20dark%2C%20noisy%2C%20and%20grainy%2C%20with%20black%20and%20deep%20shadow%20textures.%20Lighting%20is%20low%20and%20uneven%2C%20creating%20high%20contrast%20and%20digital%20noise.%20Camera%20angle%20is%20tight%2C%20cropped%2C%20and%20intimate%2C%20resembling%20a%20low-resolution%20candid.%20Artistic%20style%3A%20glitchy%2C%20censored%20digital%20snapshot%2C%20lo-fi%20cyberpunk%20texture..%20Transformation%3A%20Enhance%20and%20upscale%20this%20image%20to%20ultra-high%20resolution.%20Sharpen%20all%20edges%2C%20recover%20lost%20detail%2C%20remove%20compression%20artifacts%2C%20boost%20clarity%2C%20preserve%20colors%2C%20natural%20skin%20texture%2C%204k%20photorealistic%20quality..%20High%20quality%2C%20detailed%2C%20coherent.?width=1024&height=1024&seed=52347&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T21:36:27.121Z"
+  },
+  {
+    "id": "8aeb18ee-8ab6-4f5b-a188-e3bf6f7a77fa",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "[upscale] Enhance and upscale this image to ultra-high resolution. Sharpen all edges, recover lost detail, remove compression artifacts, boost clarity, preserve colors, natural skin texture, 4k photorealistic quality.",
+    "url": "https://image.pollinations.ai/prompt/A%20heavily%20pixelated%2C%20abstract%20close-up%20portrait%20with%20the%20central%20face%20obscured%20by%20a%20soft-edged%20square%20blur.%20Only%20hints%20of%20a%20cheek%20and%20ear%20are%20visible%20at%20right%2C%20while%20vivid%20red%2C%20magenta%2C%20and%20black%20fabric-like%20textures%20fill%20the%20lower%20area%2C%20suggesting%20patterned%20clothing.%20The%20background%20is%20dark%20and%20noisy%2C%20with%20grainy%20digital%20artifacts%20and%20low-resolution%20compression%20throughout.%20Lighting%20is%20dim%20and%20uneven%2C%20with%20faint%20warm%20highlights%20on%20skin%20tones%20and%20deep%20shadow%20around%20the%20edges.%20Camera%20framing%20is%20tight%2C%20head-and-shoulders%20crop%2C%20straight-on%20angle%2C%20creating%20a%20censored%2C%20mysterious%20identity%20effect.%20Artistic%20style%3A%20glitchy%20lo-fi%20digital%20snapshot%2C%20surveillance%20aesthetic%2C%20high%20noise%2C%20abstract%20expression%20through%20obscuration..%20Transformation%3A%20Enhance%20and%20upscale%20this%20image%20to%20ultra-high%20resolution.%20Sharpen%20all%20edges%2C%20recover%20lost%20detail%2C%20remove%20compression%20artifacts%2C%20boost%20clarity%2C%20preserve%20colors%2C%20natural%20skin%20texture%2C%204k%20photorealistic%20quality..%20High%20quality%2C%20detailed%2C%20coherent.?width=1024&height=1024&seed=898830&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T21:26:13.239Z"
+  },
+  {
+    "id": "d3892839-43bc-4a51-904d-83c80762b9e5",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "video",
+    "prompt": "make a car driving",
+    "url": "https://image.pollinations.ai/prompt/make%20a%20car%20driving?width=768&height=432&seed=10000&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T20:28:49.813Z"
+  },
+  {
+    "id": "535c88b3-6571-470a-9a53-a6a0e8d17ba0",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "make a spongbob anime",
+    "url": "/generated/535c88b3-6571-470a-9a53-a6a0e8d17ba0.jpg",
+    "createdAt": "2026-04-29T20:27:10.567Z"
+  },
+  {
+    "id": "f8b48a9a-a522-4f35-b210-4a352456068d",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "make it solved",
+    "url": "https://image.pollinations.ai/prompt/make%20it%20solved?width=1024&height=1024&seed=487409&nologo=true&model=flux&enhance=true&image=http%3A%2F%2Flocalhost%3A3000%2Fuploads%2Fd59fd3cc-99ce-4e14-9d9c-2604241e2c65%2F1777494479950-9a785f58c302.png",
+    "createdAt": "2026-04-29T20:28:07.595Z"
+  },
+  {
+    "id": "76395b5c-74cf-49fd-83d3-6ddf32dcfbc5",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "solve",
+    "url": "https://image.pollinations.ai/prompt/solve?width=1024&height=1024&seed=675269&nologo=true&model=flux&enhance=true&image=http%3A%2F%2Flocalhost%3A3000%2Fuploads%2Fd59fd3cc-99ce-4e14-9d9c-2604241e2c65%2F1777492077734-8e2b9c545089.png",
+    "createdAt": "2026-04-29T19:48:08.161Z"
+  },
+  {
+    "id": "2bf68a16-9ab0-4c38-85ed-c1105729563a",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "solve",
+    "url": "https://image.pollinations.ai/prompt/solve?width=1024&height=1024&seed=191841&nologo=true&model=flux&enhance=true&image=http%3A%2F%2Flocalhost%3A3000%2Fuploads%2Fd59fd3cc-99ce-4e14-9d9c-2604241e2c65%2F1777492077734-8e2b9c545089.png",
+    "createdAt": "2026-04-29T19:47:59.462Z"
+  },
+  {
+    "id": "824d26ca-46fb-4ea5-a364-a6d75f27b8aa",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "car",
+    "url": "https://image.pollinations.ai/prompt/photorealistic%20car%2C%20highly%20detailed%2C%208k%2C%20cinematic%20lighting%2C%20ultra-realistic",
+    "createdAt": "2026-04-29T19:46:34.583Z"
+  },
+  {
+    "id": "90dce67a-57f0-42d4-90a9-16b6638091d6",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "edit",
+    "prompt": "solve",
+    "url": "https://image.pollinations.ai/prompt/solve?width=1024&height=1024&seed=534419&nologo=true&image=http%3A%2F%2Flocalhost%3A3000%2Fuploads%2Fd59fd3cc-99ce-4e14-9d9c-2604241e2c65%2F1777490832907-9d73e39268da.png",
+    "createdAt": "2026-04-29T19:27:20.373Z"
+  },
+  {
+    "id": "0fdaf7cf-454b-4cd7-8766-73e82f37fca8",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "video",
+    "prompt": "create a car driving",
+    "url": "https://image.pollinations.ai/prompt/create%20a%20car%20driving?width=768&height=432&seed=10000&nologo=true",
+    "createdAt": "2026-04-29T19:26:42.235Z"
+  },
+  {
+    "id": "8d7f069f-b303-423f-b6ef-2ef8fa6ef0c9",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "creat car",
+    "url": "https://image.pollinations.ai/prompt/photorealistic%20creat%20car",
+    "createdAt": "2026-04-29T19:26:05.771Z"
+  },
+  {
+    "id": "6d611273-09d9-4892-a584-04aa7ecabcaf",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "creat a car",
+    "url": "https://image.pollinations.ai/prompt/photorealistic%20car%2C%20studio%20lighting%2C%20highly%20detailed%2C%208k",
+    "createdAt": "2026-04-29T18:29:28.453Z"
+  },
+  {
+    "id": "3cab5e12-620e-43ac-903b-47349a00f90c",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "creat a cat",
+    "url": "https://image.pollinations.ai/prompt/photorealistic%20cat",
+    "createdAt": "2026-04-29T18:26:06.309Z"
+  }
+]

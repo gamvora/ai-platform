@@ -1,0 +1,107 @@
+[
+  {
+    "id": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "email": "psblue909@gmail.com",
+    "name": "psblue",
+    "passwordHash": "$2a$10$R.WfVNbtfjIvnpwArknJweca1OOheHHkQM7BMwbU9aX783EKozfL6",
+    "createdAt": "2026-04-29T18:07:37.078Z",
+    "preferences": {
+      "theme": "dark",
+      "defaultChatModel": "blackboxai/anthropic/claude-sonnet-4.5",
+      "defaultImageModel": "pollinations/flux",
+      "defaultImageSize": "1024x1024",
+      "saveHistory": true,
+      "voiceReplies": true,
+      "language": "es",
+      "botAvatarUrl": "https://api.dicebear.com/9.x/adventurer/svg?seed=Nova&backgroundType=gradientLinear"
+    }
+  },
+  {
+    "id": "b6428a6d-e2a6-46a8-a91c-59fe0f239eef",
+    "email": "test@nova.ai",
+    "name": "Nova Tester",
+    "passwordHash": "$2a$10$daIw6xTah6jyz9RBrjL/QuHJ9e97oFI6UTmMy7.SiN79khVfhD9xO",
+    "createdAt": "2026-04-29T18:08:08.738Z"
+  },
+  {
+    "id": "ee8bd3a8-6b89-4eed-8b6a-402bab48f85e",
+    "email": "chat_test_oq0p2y@nova.test",
+    "name": "Chat Tester",
+    "passwordHash": "$2a$10$kDsJHJHq3Xnbh1Lv4.XCzOmShGcfNNiu2qPmiXEPIvS.Z4GHK1N0.",
+    "createdAt": "2026-04-29T18:14:34.318Z"
+  },
+  {
+    "id": "d16739f3-7c44-48af-9ede-e9c88f22510c",
+    "email": "img-test-1777487085268@example.com",
+    "name": "Img Test",
+    "passwordHash": "$2a$10$KQ5ZJFd4fqjTWfHoIW52meXwW0sXbpgnuqjsH.sQheKRB2lrVQHaa",
+    "createdAt": "2026-04-29T18:24:46.170Z"
+  },
+  {
+    "id": "2762373f-aea8-407c-a616-a9d6e1ee5fb8",
+    "email": "vid-test-1777487147373@example.com",
+    "name": "Vid",
+    "passwordHash": "$2a$10$IZi8hOLs2lwnGXlo5/Ap9e03XfZ5S5OgENQqfbgXTHSeM7bUMJPZq",
+    "createdAt": "2026-04-29T18:25:47.552Z"
+  },
+  {
+    "id": "80b535e7-14a7-4fa8-a338-f4c8514aeb8f",
+    "email": "vid-test-1777487219831@example.com",
+    "name": "Vid",
+    "passwordHash": "$2a$10$FV6Rpy3u3TKSwV0Ger0xy.ldoizWY1LKsV0/Ny4KgXsReMdWTSNym",
+    "createdAt": "2026-04-29T18:27:00.242Z"
+  },
+  {
+    "id": "def523bf-fe85-4ec5-93c8-46270112e54f",
+    "email": "chat_test_sy4bym@nova.test",
+    "name": "Chat Tester",
+    "passwordHash": "$2a$10$7.ax0kqLDz0zbey7SU/LSOoQS8K.l7vcGjdAjxhLIQl29HfSu/PGe",
+    "createdAt": "2026-04-29T18:28:10.609Z"
+  },
+  {
+    "id": "f1716f18-cebe-40fe-8181-9217f7d721be",
+    "email": "smoke1777493437652@test.local",
+    "name": "Smoke Tester",
+    "passwordHash": "$2a$10$AJcEL2rrxTGSiWXrMRfWzOf/7sRtH5E2i7Mn3lxAwrcugIqnQxVvu",
+    "createdAt": "2026-04-29T20:10:38.774Z"
+  },
+  {
+    "id": "08db6ae1-68cb-4668-a99d-538d5c14a76b",
+    "email": "smoke1777493570316@test.local",
+    "name": "Smoke Tester",
+    "passwordHash": "$2a$10$AJEwklHquW22go6zObRFRuDNeBaI93tYAdw44B3F1.aVz420D2Nfy",
+    "createdAt": "2026-04-29T20:12:50.875Z"
+  },
+  {
+    "id": "a326989a-6ec0-4c7a-9120-9bf6c3519a65",
+    "email": "demo@nova.test",
+    "name": "Nova Demo",
+    "passwordHash": "$2a$10$0LC6qhbjR1u93CGZWDnioOLUmhXbTs7piaw5MtOf47.4CB3fZgy8u",
+    "createdAt": "2026-04-29T20:27:07.145Z"
+  },
+  {
+    "id": "3d7b8281-a3e1-42ca-8ee4-a260c21872ab",
+    "email": "smoke1777494619990@test.local",
+    "name": "Smoke Tester",
+    "passwordHash": "$2a$10$JBDGkUnD5XF3oFLSr8nm/.rgdtVWOvfISMIRXGA6FJltOCifVFyR6",
+    "createdAt": "2026-04-29T20:30:20.845Z"
+  },
+  {
+    "id": "00fe1bd6-613a-47eb-802e-ce7a92e56e32",
+    "email": "img-test-1777498318766@example.com",
+    "name": "Img Test",
+    "passwordHash": "$2a$10$prTq9uGyFmEPQN/IDLhYM.0BdZTaeVgOY.Wo89FK80gqwWqXgr.am",
+    "avatarUrl": null,
+    "preferences": null,
+    "createdAt": "2026-04-29T21:32:00.115Z"
+  },
+  {
+    "id": "3b87a856-268b-44a4-ab0e-efd401dac58a",
+    "email": "img-test-1777499300022@example.com",
+    "name": "Img Test",
+    "passwordHash": "$2a$10$kxxBypS7UXUFDOxVH0.uG.upbBDWj5f2Co/TNOrY6Ula0y8CJXR.m",
+    "avatarUrl": null,
+    "preferences": null,
+    "createdAt": "2026-04-29T21:48:21.083Z"
+  }
+]

@@ -1,0 +1,22 @@
+﻿
+=== TEST VIDEO via /chat/completions ===
+  blackboxai/google/veo-3-fast
+    status=500 (url: https://queue.fal.run/fal-ai/veo3/fast)
+    {"error":{"message":"blackbox.Error: blackbox request failed: User is locked. Reason: Exhausted balance. Top up your balance at blackbox/dashboard/billing.\nTraceback (most recent call last):\n File \"/usr/local/lib/python3.11/site-packages/fal_clien
+  blackboxai/sora-2-text-to-video
+    status=500 (url: https://queue.fal.run/fal-ai/sora-2/text-to-video)
+    {"error":{"message":"blackbox.Error: blackbox request failed: User is locked. Reason: Exhausted balance. Top up your balance at blackbox/dashboard/billing.\nTraceback (most recent call last):\n File \"/usr/local/lib/python3.11/site-packages/fal_clien
+  blackboxai/veo-3.1-fast
+    status=500 (url: https://queue.fal.run/fal-ai/veo3.1/fast)
+    {"error":{"message":"blackbox.Error: blackbox request failed: User is locked. Reason: Exhausted balance. Top up your balance at blackbox/dashboard/billing.\nTraceback (most recent call last):\n File \"/usr/local/lib/python3.11/site-packages/fal_clien
+  blackboxai/google/veo-2
+    status=500 (url: https://queue.fal.run/fal-ai/veo2)
+    {"error":{"message":"blackbox.Error: blackbox request failed: User is locked. Reason: Exhausted balance. Top up your balance at blackbox/dashboard/billing.\nTraceback (most recent call last):\n File \"/usr/local/lib/python3.11/site-packages/fal_clien
+
+=== TEST Pollinations (image gen, free) ===
+   https://image.pollinations.ai/prompt/a%20red%20apple%20on%20a%20white%20table?width=512&height=512&seed=42&nologo=true
+   status=200 content-type=image/jpeg size=22376
+
+=== TEST Pollinations img2img (edit) ===
+   https://image.pollinations.ai/prompt/make%20it%20green?image=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F1%2F15%2FRed_Apple.jpg%2F320px-Red_Apple.jpg&width=512&height=512&seed=7&nologo=true
+   status=200 content-type=image/jpeg size=?

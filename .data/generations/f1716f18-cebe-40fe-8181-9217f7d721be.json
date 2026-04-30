@@ -1,0 +1,26 @@
+[
+  {
+    "id": "8f03502b-debd-475f-8419-2e47af4d3a0b",
+    "userId": "f1716f18-cebe-40fe-8181-9217f7d721be",
+    "type": "video",
+    "prompt": "a drone shot over neon tokyo streets",
+    "url": "https://image.pollinations.ai/prompt/a%20drone%20shot%20over%20neon%20tokyo%20streets?width=768&height=432&seed=10000&nologo=true&model=flux&enhance=true",
+    "createdAt": "2026-04-29T20:12:33.651Z"
+  },
+  {
+    "id": "615933e1-ca11-4f0a-96fb-f976c432cde8",
+    "userId": "f1716f18-cebe-40fe-8181-9217f7d721be",
+    "type": "edit",
+    "prompt": "make it watercolor painting style",
+    "url": "/generated/615933e1-ca11-4f0a-96fb-f976c432cde8.jpg",
+    "createdAt": "2026-04-29T20:10:54.378Z"
+  },
+  {
+    "id": "dd067e71-a3fd-4432-af4e-ceb54785b6f5",
+    "userId": "f1716f18-cebe-40fe-8181-9217f7d721be",
+    "type": "image",
+    "prompt": "a serene mountain lake at sunrise",
+    "url": "/generated/dd067e71-a3fd-4432-af4e-ceb54785b6f5.jpg",
+    "createdAt": "2026-04-29T20:10:53.178Z"
+  }
+]

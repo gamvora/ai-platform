@@ -1,0 +1,17 @@
+
+🧪  Smoke testing http://localhost:3000
+
+✅ register — 200
+✅ login — 200
+✅ me — 200
+✅ chat — 200
+✅ image (generate) — 200
+✅ image (list) — 200
+✅ edit (generate) — 200
+✅ edit (list) — 200
+✅ video (generate) — 200
+✅ video (list) — 200
+✅ conversations — 200
+
+Done.
+
