@@ -28,6 +28,7 @@ export default function VoiceCallModal({
   defaultLanguage = 'ar-SA',
 }: VoiceCallModalProps) {
   const toast = useToast();
+
   const [state, setState] = useState<CallState>('idle');
   const [muted, setMuted] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -37,30 +38,77 @@ export default function VoiceCallModal({
   const [language, setLanguage] = useState(defaultLanguage);
   const [level, setLevel] = useState(0);
   const [ttsMode, setTtsMode] = useState<'web' | 'api'>('web');
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [ttsSupported, setTtsSupported] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   const recognitionRef = useRef<any>(null);
   const callActiveRef = useRef(false);
   const speakingRef = useRef(false);
   const pauseRef = useRef(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioCtxRef = useRef<(AudioContext & { createMediaStreamSource: (stream: MediaStream) => MediaStreamAudioSourceNode }) | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const mountedRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
 
   const voiceOptions = useMemo(() => pickVoiceOptions(voices, language), [voices, language]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setReducedMotion(!!mq.matches);
+      const onChange = () => setReducedMotion(!!mq.matches);
+      try {
+        mq.addEventListener('change', onChange);
+      } catch {
+        // Safari fallback
+        // @ts-ignore
+        mq.addListener?.(onChange);
+      }
+      return () => {
+        mountedRef.current = false;
+        try {
+          mq.removeEventListener('change', onChange);
+        } catch {
+          // @ts-ignore
+          mq.removeListener?.(onChange);
+        }
+      };
+    }
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setSpeechSupported(!!SR);
+    setTtsSupported('speechSynthesis' in window);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setVoices([]);
+      return;
+    }
     const synth = window.speechSynthesis;
     const loadVoices = () => {
-      const v = synth.getVoices();
-      setVoices(v || []);
-      if (!selectedVoiceURI && v?.length) {
-        const match =
-          v.find((x) => x.lang?.toLowerCase().startsWith('ar')) ||
-          v.find((x) => x.default) ||
-          v[0];
-        if (match) setSelectedVoiceURI(match.voiceURI);
+      try {
+        const v = synth.getVoices() || [];
+        setVoices(v);
+        if (!selectedVoiceURI && v.length) {
+          const match =
+            v.find((x) => x.lang?.toLowerCase().startsWith(language.toLowerCase().split('-')[0])) ||
+            v.find((x) => x.default) ||
+            v[0];
+          if (match) setSelectedVoiceURI(match.voiceURI);
+        }
+      } catch {
+        setVoices([]);
       }
     };
     loadVoices();
@@ -68,34 +116,63 @@ export default function VoiceCallModal({
     return () => {
       synth.onvoiceschanged = null;
     };
-  }, [selectedVoiceURI]);
+  }, [selectedVoiceURI, language]);
 
   useEffect(() => {
     if (!open) return;
-    callActiveRef.current = true;
+
+    callActiveRef.current = false;
+    pauseRef.current = false;
+    speakingRef.current = false;
     setState('idle');
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        endCall();
+        return;
+      }
       if (e.key.toLowerCase() === 'v') {
-        if (state === 'idle' || state === 'paused') startCall();
+        if (state === 'idle' || state === 'paused') void startCall();
         else endCall();
       }
-      if (e.key === 'Escape') endCall();
     };
-    window.addEventListener('keydown', onKey);
 
+    window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
       cleanup();
     };
   }, [open, state]);
 
+  async function ensureAudioUnlocked() {
+    if (typeof window === 'undefined') return;
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return;
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AC();
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+    } catch {
+      // ignore unlock errors
+    }
+  }
+
   async function initMicLevel() {
     try {
+      await ensureAudioUnlocked();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
+
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+
+      if (!audioCtxRef.current) audioCtxRef.current = new AC();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') await ctx.resume();
+
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 1024;
@@ -104,6 +181,7 @@ export default function VoiceCallModal({
 
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
+        if (!mountedRef.current) return;
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
@@ -126,14 +204,11 @@ export default function VoiceCallModal({
       mediaStreamRef.current = null;
     }
 
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
-    }
     analyserRef.current = null;
   }
 
   function selectedVoice() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const all = voices.length ? voices : window.speechSynthesis.getVoices();
     return all.find((v) => v.voiceURI === selectedVoiceURI) || null;
   }
@@ -144,14 +219,23 @@ export default function VoiceCallModal({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: clean, lang: language }),
     });
+
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data?.error || 'تعذّر تشغيل TTS الخارجي');
     }
+
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    await new Promise<void>((resolve, reject) => {
+
+    await new Promise<void>(async (resolve, reject) => {
+      try {
+        await ensureAudioUnlocked();
+      } catch {}
+
       const audio = new Audio(url);
+      audio.preload = 'auto';
+
       audio.onended = () => {
         URL.revokeObjectURL(url);
         resolve();
@@ -160,61 +244,79 @@ export default function VoiceCallModal({
         URL.revokeObjectURL(url);
         reject(new Error('Audio playback failed'));
       };
-      audio.play().catch((e) => reject(e));
+
+      audio.play().catch((e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      });
     });
   }
 
-  function speak(text: string) {
-    return new Promise<void>(async (resolve) => {
-      if (muted) return resolve();
-      const clean = (text || '').replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (!clean) return resolve();
+  async function speak(text: string) {
+    if (muted) return;
+    const clean = (text || '').replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!clean) return;
 
-      setState('speaking');
-      speakingRef.current = true;
+    setState('speaking');
+    speakingRef.current = true;
 
-      try {
-        const hasWebTts = typeof window !== 'undefined' && 'speechSynthesis' in window;
-        if (hasWebTts) {
-          setTtsMode('web');
+    try {
+      const hasWebTts = typeof window !== 'undefined' && 'speechSynthesis' in window;
+      if (hasWebTts) {
+        setTtsMode('web');
+        try {
           window.speechSynthesis.cancel();
+        } catch {}
 
-          const utter = new SpeechSynthesisUtterance(clean);
-          utter.lang = language;
-          utter.rate = rate;
-          utter.pitch = pitch;
-          const v = selectedVoice();
-          if (v) utter.voice = v;
+        await new Promise<void>(async (resolveWeb) => {
+          try {
+            const utter = new SpeechSynthesisUtterance(clean);
+            utter.lang = language;
+            utter.rate = rate;
+            utter.pitch = pitch;
+            const v = selectedVoice();
+            if (v) utter.voice = v;
 
-          utter.onend = () => {
-            speakingRef.current = false;
-            resolve();
-          };
-          utter.onerror = async () => {
-            try {
-              setTtsMode('api');
-              await speakViaApi(clean);
-            } catch {}
-            speakingRef.current = false;
-            resolve();
-          };
-          window.speechSynthesis.speak(utter);
-          return;
-        }
+            utter.onend = () => resolveWeb();
+            utter.onerror = () => resolveWeb();
 
+            window.speechSynthesis.speak(utter);
+          } catch {
+            resolveWeb();
+          }
+        });
+
+        return;
+      }
+
+      setTtsMode('api');
+      await speakViaApi(clean);
+    } catch {
+      try {
         setTtsMode('api');
         await speakViaApi(clean);
-      } catch {
-        // ignore
-      } finally {
-        speakingRef.current = false;
-        resolve();
+      } catch (e: any) {
+        toast.error(e?.message || 'تعذر تشغيل الصوت');
       }
-    });
+    } finally {
+      speakingRef.current = false;
+    }
+  }
+
+  function clearRestartTimer() {
+    if (restartTimerRef.current) {
+      window.clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
   }
 
   function startRecognitionLoop() {
-    if (!callActiveRef.current || pauseRef.current) return;
+    if (!callActiveRef.current || pauseRef.current || speakingRef.current) return;
+    if (!speechSupported) {
+      toast.error('المتصفح لا يدعم الإدخال الصوتي');
+      return;
+    }
+
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.error('المتصفح لا يدعم الإدخال الصوتي');
@@ -230,7 +332,7 @@ export default function VoiceCallModal({
     rec.continuous = false;
 
     rec.onresult = async (event: any) => {
-      const transcript = (event.results?.[0]?.[0]?.transcript || '').trim();
+      const transcript = (event?.results?.[0]?.[0]?.transcript || '').trim();
       if (!transcript) {
         if (callActiveRef.current && !pauseRef.current) startRecognitionLoop();
         return;
@@ -255,29 +357,41 @@ export default function VoiceCallModal({
         endCall();
         return;
       }
-      if (!pauseRef.current) setTimeout(() => startRecognitionLoop(), 300);
+      if (!pauseRef.current) {
+        clearRestartTimer();
+        restartTimerRef.current = window.setTimeout(() => {
+          startRecognitionLoop();
+        }, 450);
+      }
     };
 
     rec.onend = () => {
       if (!callActiveRef.current || pauseRef.current || speakingRef.current) return;
-      startRecognitionLoop();
+      clearRestartTimer();
+      restartTimerRef.current = window.setTimeout(() => {
+        startRecognitionLoop();
+      }, 300);
     };
 
     try {
       rec.start();
     } catch {
-      setTimeout(() => startRecognitionLoop(), 300);
+      clearRestartTimer();
+      restartTimerRef.current = window.setTimeout(() => {
+        startRecognitionLoop();
+      }, 500);
     }
   }
 
   async function startCall() {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
+    if (!speechSupported) {
       toast.error('المتصفح لا يدعم الإدخال الصوتي');
       return;
     }
+
     pauseRef.current = false;
     callActiveRef.current = true;
+
     await initMicLevel();
     startRecognitionLoop();
   }
@@ -288,7 +402,11 @@ export default function VoiceCallModal({
     try {
       recognitionRef.current?.stop();
     } catch {}
-    window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
   }
 
   function resumeCall() {
@@ -306,39 +424,47 @@ export default function VoiceCallModal({
   }
 
   function cleanup() {
+    clearRestartTimer();
     try {
       recognitionRef.current?.stop();
     } catch {}
     recognitionRef.current = null;
-    window.speechSynthesis.cancel();
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+
     speakingRef.current = false;
     stopMicLevel();
   }
 
-  function previewVoice() {
-    if (!('speechSynthesis' in window)) return;
-    const utter = new SpeechSynthesisUtterance('مرحباً، هذا اختبار للصوت. Hello, this is a voice preview.');
-    utter.lang = language;
-    utter.rate = rate;
-    utter.pitch = pitch;
-    const v = selectedVoice();
-    if (v) utter.voice = v;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
+  async function previewVoice() {
+    const sample = 'مرحباً، هذا اختبار للصوت. Hello, this is a voice preview.';
+    try {
+      await speak(sample);
+    } catch {
+      toast.error('تعذر تشغيل المعاينة');
+    }
   }
 
   if (!open) return null;
 
+  const orbScale = reducedMotion ? 1 : 1 + level * 0.08;
+  const glowA = reducedMotion ? 25 : 40 + level * 60;
+  const glowB = reducedMotion ? 15 : 20 + level * 40;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-      <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-neutral-950/95 p-4 sm:p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white text-xl sm:text-2xl font-semibold">
+    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-6">
+      <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-neutral-950/95 p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl max-h-[95vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h2 className="text-white text-lg sm:text-2xl font-semibold">
             Voice Call Mode {ttsMode === 'api' ? '(API TTS)' : '(Browser TTS)'}
           </h2>
           <button
             onClick={endCall}
-            className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-rose-200"
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-rose-200 min-h-[44px]"
           >
             <PhoneOff className="w-4 h-4" />
             إنهاء
@@ -349,7 +475,7 @@ export default function VoiceCallModal({
           <label className="text-sm text-white/80">
             Voice
             <select
-              className="mt-1 w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-white"
+              className="mt-1 w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-3 text-white"
               value={selectedVoiceURI}
               onChange={(e) => setSelectedVoiceURI(e.target.value)}
             >
@@ -364,7 +490,7 @@ export default function VoiceCallModal({
           <label className="text-sm text-white/80">
             Language
             <select
-              className="mt-1 w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-white"
+              className="mt-1 w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-3 text-white"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
             >
@@ -403,13 +529,13 @@ export default function VoiceCallModal({
 
         <div className="flex justify-center mb-5">
           <div
-            className="relative h-48 w-48 sm:h-56 sm:w-56 rounded-full"
+            className="relative h-44 w-44 sm:h-56 sm:w-56 rounded-full"
             style={{
               background:
                 'radial-gradient(circle at center, rgba(59,130,246,0.65), rgba(16,185,129,0.25) 55%, rgba(0,0,0,0) 70%)',
-              boxShadow: `0 0 ${40 + level * 60}px rgba(59,130,246,0.45), 0 0 ${20 + level * 40}px rgba(16,185,129,0.35)`,
-              transform: `scale(${1 + level * 0.08})`,
-              transition: 'transform 120ms linear, box-shadow 120ms linear',
+              boxShadow: `0 0 ${glowA}px rgba(59,130,246,0.45), 0 0 ${glowB}px rgba(16,185,129,0.35)`,
+              transform: `scale(${orbScale})`,
+              transition: reducedMotion ? 'none' : 'transform 120ms linear, box-shadow 120ms linear',
             }}
           >
             <div className="absolute inset-0 grid place-items-center text-white">
@@ -421,18 +547,22 @@ export default function VoiceCallModal({
           </div>
         </div>
 
-        <div className="text-center mb-5 text-white/80">
+        <div className="text-center mb-5 text-white/80 text-sm sm:text-base">
           {state === 'idle' && 'جاهز لبدء المكالمة'}
           {state === 'listening' && 'أستمع إليك الآن...'}
           {state === 'thinking' && 'أفكر في الرد...'}
           {state === 'speaking' && 'أتحدث الآن...'}
           {state === 'paused' && 'المكالمة متوقفة مؤقتًا'}
+          {!speechSupported && <div className="mt-2 text-amber-300">هذا المتصفح لا يدعم STT.</div>}
+          {!ttsSupported && (
+            <div className="mt-1 text-cyan-300">سيتم استخدام API للقراءة الصوتية بدلًا من المتصفح.</div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 justify-center">
           <button
             onClick={previewVoice}
-            className="rounded-xl border border-neutral-600 bg-neutral-800 px-4 py-2 text-white inline-flex items-center gap-2"
+            className="rounded-xl border border-neutral-600 bg-neutral-800 px-4 py-3 text-white inline-flex items-center gap-2 min-h-[44px]"
           >
             <Volume2 className="w-4 h-4" />
             معاينة الصوت
@@ -440,8 +570,8 @@ export default function VoiceCallModal({
 
           {state === 'idle' ? (
             <button
-              onClick={startCall}
-              className="rounded-xl border border-emerald-500/50 bg-emerald-500/20 px-4 py-2 text-emerald-100 inline-flex items-center gap-2"
+              onClick={() => void startCall()}
+              className="rounded-xl border border-emerald-500/50 bg-emerald-500/20 px-4 py-3 text-emerald-100 inline-flex items-center gap-2 min-h-[44px]"
             >
               <Play className="w-4 h-4" />
               Start Voice Call
@@ -449,7 +579,7 @@ export default function VoiceCallModal({
           ) : state === 'paused' ? (
             <button
               onClick={resumeCall}
-              className="rounded-xl border border-primary-500/50 bg-primary-500/20 px-4 py-2 text-primary-100 inline-flex items-center gap-2"
+              className="rounded-xl border border-primary-500/50 bg-primary-500/20 px-4 py-3 text-primary-100 inline-flex items-center gap-2 min-h-[44px]"
             >
               <Play className="w-4 h-4" />
               متابعة
@@ -457,7 +587,7 @@ export default function VoiceCallModal({
           ) : (
             <button
               onClick={pauseCall}
-              className="rounded-xl border border-amber-500/50 bg-amber-500/20 px-4 py-2 text-amber-100 inline-flex items-center gap-2"
+              className="rounded-xl border border-amber-500/50 bg-amber-500/20 px-4 py-3 text-amber-100 inline-flex items-center gap-2 min-h-[44px]"
             >
               <Pause className="w-4 h-4" />
               إيقاف مؤقت
@@ -466,7 +596,7 @@ export default function VoiceCallModal({
 
           <button
             onClick={() => setMuted((m) => !m)}
-            className="rounded-xl border border-neutral-600 bg-neutral-800 px-4 py-2 text-white inline-flex items-center gap-2"
+            className="rounded-xl border border-neutral-600 bg-neutral-800 px-4 py-3 text-white inline-flex items-center gap-2 min-h-[44px]"
           >
             {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             {muted ? 'Unmute TTS' : 'Mute TTS'}
