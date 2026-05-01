@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Paperclip, Send, X, Loader2, Image as ImageIcon, Mic, Square } from 'lucide-react';
+import { Paperclip, Send, X, Loader2, Image as ImageIcon, Mic, Square, Headphones } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 interface ChatInputProps {
   onSend: (text: string, images: string[]) => Promise<void> | void;
   disabled?: boolean;
+  onVoiceCallClick?: () => void;
 }
 
-export default function ChatInput({ onSend, disabled }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, onVoiceCallClick }: ChatInputProps) {
   const toast = useToast();
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -19,6 +20,9 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef<string>('');
+  const restartCountRef = useRef(0);
+  const stopRequestedRef = useRef(false);
 
   useEffect(() => {
     const SR =
@@ -26,6 +30,12 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
         ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         : null;
     setSpeechSupported(!!SR);
+
+    return () => {
+      try {
+        if (recognitionRef.current) recognitionRef.current.stop();
+      } catch {}
+    };
   }, []);
 
   async function handleFiles(files: FileList | null) {
@@ -83,30 +93,46 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
       typeof window !== 'undefined'
         ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         : null;
+
     if (!SR) {
       toast.error('المتصفح لا يدعم الإدخال الصوتي');
       return;
     }
 
     if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
+      stopRequestedRef.current = true;
+      try {
+        recognitionRef.current.stop();
+      } catch {}
       setIsListening(false);
       return;
     }
 
     const rec = new SR();
     recognitionRef.current = rec;
+    stopRequestedRef.current = false;
+    restartCountRef.current = 0;
+    finalTranscriptRef.current = text ? text + ' ' : '';
+
     rec.lang = 'ar-SA';
     rec.interimResults = true;
     rec.maxAlternatives = 1;
     rec.continuous = true;
 
     rec.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        finalTranscript += event.results[i][0].transcript + ' ';
+      let interim = '';
+      let finals = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const chunk = (event.results[i][0]?.transcript || '').trim();
+        if (!chunk) continue;
+        if (event.results[i].isFinal) finals += chunk + ' ';
+        else interim += chunk + ' ';
       }
-      const next = finalTranscript.trim();
+
+      if (finals) finalTranscriptRef.current += finals;
+
+      const next = (finalTranscriptRef.current + interim).replace(/\s+/g, ' ').trim();
       setText(next);
       if (textareaRef.current) {
         textareaRef.current.value = next;
@@ -114,17 +140,44 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
       }
     };
 
-    rec.onerror = () => {
+    rec.onerror = (e: any) => {
       setIsListening(false);
+      if (e?.error === 'no-speech') {
+        toast.error('لم يتم التقاط صوت، حاول مرة أخرى.');
+        return;
+      }
+      if (e?.error === 'not-allowed') {
+        toast.error('تم رفض إذن الميكروفون.');
+        return;
+      }
       toast.error('حدث خطأ أثناء التعرف على الصوت');
     };
 
     rec.onend = () => {
+      if (stopRequestedRef.current) {
+        setIsListening(false);
+        stopRequestedRef.current = false;
+        return;
+      }
+
+      if (isListening && restartCountRef.current < 2) {
+        restartCountRef.current += 1;
+        try {
+          rec.start();
+          return;
+        } catch {}
+      }
+
       setIsListening(false);
     };
 
-    rec.start();
-    setIsListening(true);
+    try {
+      rec.start();
+      setIsListening(true);
+    } catch {
+      toast.error('تعذر بدء التسجيل الصوتي');
+      setIsListening(false);
+    }
   }
 
   return (
@@ -187,9 +240,20 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           onClick={toggleVoiceInput}
           disabled={disabled || !speechSupported}
           className="btn-ghost p-2.5 shrink-0 min-h-[44px] min-w-[44px]"
-          title={isListening ? 'إيقاف التسجيل' : 'تسجيل صوتي'}
+          title={isListening ? 'إيقاف التسجيل' : 'تحدث الآن'}
         >
           {isListening ? <Square className="w-5 h-5 text-rose-400" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        <button
+          onClick={() => onVoiceCallClick?.()}
+          disabled={disabled || !onVoiceCallClick}
+          className="relative p-2.5 shrink-0 min-h-[44px] min-w-[44px] rounded-xl border border-cyan-400/40 bg-gradient-to-br from-cyan-500/30 via-sky-500/25 to-indigo-500/30 hover:from-cyan-500/40 hover:via-sky-500/35 hover:to-indigo-500/40 text-cyan-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Voice Call"
+          aria-label="Start Voice Call"
+        >
+          <span className="absolute inset-0 rounded-xl shadow-[0_0_24px_rgba(34,211,238,0.35)] pointer-events-none" />
+          <Headphones className="w-5 h-5 relative z-[1]" />
         </button>
 
         <button
@@ -208,7 +272,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
       <p className="text-[11px] sm:text-xs text-white/40 text-center mt-2 px-2">
         <ImageIcon className="inline w-3 h-3 ml-1" />
         يمكنك إرفاق الصور، ونوفا يستطيع تحليلها.
-        {speechSupported ? ' كما يمكنك التحدث صوتيًا.' : ' (الإدخال الصوتي غير مدعوم في هذا المتصفح).'}
+        {speechSupported ? ' اضغط الميكروفون وتحدث بالعربية.' : ' (الإدخال الصوتي غير مدعوم في هذا المتصفح).'}
       </p>
     </div>
   );

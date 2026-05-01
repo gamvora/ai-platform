@@ -25,7 +25,7 @@ const DEFAULTS: Required<
   defaultImageSize: '1024x1024',
   saveHistory: true,
   voiceReplies: false,
-  language: 'en',
+  language: 'ar',
   botAvatarUrl: '',
 };
 

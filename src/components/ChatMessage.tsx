@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -35,6 +35,30 @@ export default function ChatMessage({ message }: { message: ChatMessageData }) {
     }
   }
 
+  const speechLang = useMemo(() => {
+    const t = message.content || '';
+    return /[\u0600-\u06FF]/.test(t) ? 'ar-SA' : 'en-US';
+  }, [message.content]);
+
+  function pickBestVoice(lang: string) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+
+    const lowerLang = lang.toLowerCase();
+    const primary = voices.find((v) => v.lang?.toLowerCase() === lowerLang);
+    if (primary) return primary;
+
+    const prefix = lowerLang.split('-')[0];
+    const byPrefix = voices.find((v) => v.lang?.toLowerCase().startsWith(prefix));
+    if (byPrefix) return byPrefix;
+
+    const byNameArabic = voices.find((v) => /arabic|ar-|العربية/i.test(`${v.name} ${v.lang}`));
+    if (byNameArabic) return byNameArabic;
+
+    return voices[0] || null;
+  }
+
   function speakMessage() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       toast.error('المتصفح لا يدعم القراءة الصوتية');
@@ -47,13 +71,17 @@ export default function ChatMessage({ message }: { message: ChatMessageData }) {
       return;
     }
 
-    const text = (message.content || '').replace(/[#*_`>-]/g, ' ').trim();
+    const text = (message.content || '').replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!text) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 1;
+    utterance.lang = speechLang;
+    utterance.rate = speechLang.startsWith('ar') ? 0.95 : 1;
     utterance.pitch = 1;
+
+    const voice = pickBestVoice(speechLang);
+    if (voice) utterance.voice = voice;
+
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => {
       setSpeaking(false);
@@ -62,6 +90,24 @@ export default function ChatMessage({ message }: { message: ChatMessageData }) {
 
     setSpeaking(true);
     window.speechSynthesis.cancel();
+
+    const voicesReady = window.speechSynthesis.getVoices();
+    if (!voicesReady.length) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        try {
+          const v2 = pickBestVoice(speechLang);
+          if (v2) utterance.voice = v2;
+          window.speechSynthesis.speak(utterance);
+        } catch {
+          setSpeaking(false);
+          toast.error('تعذر تشغيل الصوت');
+        } finally {
+          window.speechSynthesis.onvoiceschanged = null;
+        }
+      };
+      return;
+    }
+
     window.speechSynthesis.speak(utterance);
   }
 

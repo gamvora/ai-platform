@@ -12,7 +12,7 @@
       "defaultImageSize": "1024x1024",
       "saveHistory": true,
       "voiceReplies": true,
-      "language": "es",
+      "language": "en",
       "botAvatarUrl": "https://api.dicebear.com/9.x/adventurer/svg?seed=Nova&backgroundType=gradientLinear"
     }
   },

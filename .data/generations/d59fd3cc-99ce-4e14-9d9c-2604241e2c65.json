@@ -1,5 +1,21 @@
 [
   {
+    "id": "ed9558ac-5d79-476e-82b7-350c2229e5e6",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "cat drining a flying car",
+    "url": "/generated/ed9558ac-5d79-476e-82b7-350c2229e5e6.jpg",
+    "createdAt": "2026-05-01T00:10:07.586Z"
+  },
+  {
+    "id": "d6c21ec0-600c-42a1-b964-45753606b02a",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "type": "image",
+    "prompt": "cat spider man",
+    "url": "/generated/d6c21ec0-600c-42a1-b964-45753606b02a.jpg",
+    "createdAt": "2026-05-01T00:09:47.064Z"
+  },
+  {
     "id": "0704db49-2a41-4776-a00a-2f6786f91e2a",
     "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
     "type": "image",

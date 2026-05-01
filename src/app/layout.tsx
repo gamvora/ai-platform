@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import './globals.css';
 import { ToastProvider } from '@/components/Toast';
 
@@ -9,13 +10,21 @@ export const metadata: Metadata = {
   keywords: ['AI', 'ChatGPT', 'Image Generation', 'Video Generation', 'Blackbox AI'],
 };
 
+function getLocale(): 'ar' | 'en' {
+  const v = cookies().get('locale')?.value;
+  return v === 'en' ? 'en' : 'ar';
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = getLocale();
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <html lang="ar" dir="rtl" className="dark">
+    <html lang={locale} dir={dir} className="dark">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

@@ -73,10 +73,10 @@ export default function SettingsPage() {
   if (!me) return null;
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: 'profile', label: 'Profile', icon: UserIcon },
-    { id: 'password', label: 'Password', icon: Lock },
-    { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
-    { id: 'danger', label: 'Danger zone', icon: Trash2 },
+    { id: 'profile', label: 'الملف الشخصي', icon: UserIcon },
+    { id: 'password', label: 'كلمة المرور', icon: Lock },
+    { id: 'preferences', label: 'التفضيلات', icon: SettingsIcon },
+    { id: 'danger', label: 'منطقة الخطر', icon: Trash2 },
   ];
 
   return (
@@ -89,14 +89,14 @@ export default function SettingsPage() {
             <Link
               href="/dashboard"
               className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
-              aria-label="Back to dashboard"
+              aria-label="العودة إلى لوحة التحكم"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold">Settings</h1>
+              <h1 className="text-2xl font-semibold">الإعدادات</h1>
               <p className="text-sm text-neutral-400">
-                Manage your account, security, and preferences.
+                إدارة الحساب، الأمان، والتفضيلات.
               </p>
             </div>
           </div>
@@ -166,7 +166,7 @@ function ProfilePanel({
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
-      toast.show('Name and email are required.', 'error');
+      toast.show('الاسم والبريد الإلكتروني مطلوبان.', 'error');
       return;
     }
     setSaving(true);
@@ -179,9 +179,9 @@ function ProfilePanel({
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Failed to save');
       onUpdate({ ...me, name: j.user.name, email: j.user.email });
-      toast.show('Profile updated.', 'success');
+      toast.show('تم تحديث الملف الشخصي.', 'success');
     } catch (err: any) {
-      toast.show(err.message || 'Failed to save.', 'error');
+      toast.show(err.message || 'فشل الحفظ.', 'error');
     } finally {
       setSaving(false);
     }
@@ -189,7 +189,7 @@ function ProfilePanel({
 
   async function uploadAvatar(file: File) {
     if (file.size > 5 * 1024 * 1024) {
-      toast.show('Avatar must be under 5 MB.', 'error');
+      toast.show('يجب أن يكون حجم الصورة أقل من 5 ميجابايت.', 'error');
       return;
     }
     setUploading(true);
@@ -200,7 +200,7 @@ function ProfilePanel({
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Upload failed');
       onUpdate({ ...me, avatarUrl: j.avatarUrl });
-      toast.show('Avatar updated.', 'success');
+      toast.show('تم تحديث الصورة الشخصية.', 'success');
     } catch (err: any) {
       toast.show(err.message || 'Upload failed.', 'error');
     } finally {
@@ -209,17 +209,17 @@ function ProfilePanel({
   }
 
   async function removeAvatar() {
-    if (!confirm('Remove your avatar?')) return;
+    if (!confirm('هل تريد إزالة الصورة الشخصية؟')) return;
     try {
       const r = await fetch('/api/user/avatar', { method: 'DELETE' });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        throw new Error(j.error || 'Failed to remove');
+        throw new Error(j.error || 'فشل الإزالة');
       }
       onUpdate({ ...me, avatarUrl: null });
-      toast.show('Avatar removed.', 'success');
+      toast.show('تمت إزالة الصورة الشخصية.', 'success');
     } catch (err: any) {
-      toast.show(err.message || 'Failed to remove avatar.', 'error');
+      toast.show(err.message || 'فشلت إزالة الصورة الشخصية.', 'error');
     }
   }
 
@@ -232,14 +232,14 @@ function ProfilePanel({
 
   return (
     <form onSubmit={saveProfile} className="space-y-6">
-      <Section title="Avatar" subtitle="Shown in the sidebar and chat header.">
+      <Section title="الصورة الشخصية" subtitle="تظهر في الشريط الجانبي ورأس الشات.">
         <div className="flex items-center gap-5">
           <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-800 ring-1 ring-neutral-700">
             {me.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={me.avatarUrl}
-                alt="Avatar"
+                alt="الصورة الشخصية"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -281,15 +281,15 @@ function ProfilePanel({
                 className="inline-flex items-center gap-2 rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700"
               >
                 <X className="h-4 w-4" />
-                Remove
+                إزالة
               </button>
             )}
           </div>
         </div>
       </Section>
 
-      <Section title="Account" subtitle="How we identify you inside Nova.">
-        <Field label="Full name">
+      <Section title="الحساب" subtitle="كيف نعرض هويتك داخل alaa ai.">
+        <Field label="الاسم الكامل">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -297,7 +297,7 @@ function ProfilePanel({
             className={inputCls}
           />
         </Field>
-        <Field label="Email">
+        <Field label="البريد الإلكتروني">
           <input
             type="email"
             value={email}
@@ -318,7 +318,7 @@ function ProfilePanel({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Save changes
+          حفظ التغييرات
         </button>
       </div>
     </form>
@@ -337,11 +337,11 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (next.length < 8) {
-      toast.show('New password must be at least 8 characters.', 'error');
+      toast.show('يجب أن تكون كلمة المرور الجديدة 8 أحرف على الأقل.', 'error');
       return;
     }
     if (next !== confirm) {
-      toast.show('Passwords do not match.', 'error');
+      toast.show('كلمتا المرور غير متطابقتين.', 'error');
       return;
     }
     setSaving(true);
@@ -352,11 +352,11 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
         body: JSON.stringify({ currentPassword: current, newPassword: next }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'Failed to update password');
+      if (!r.ok) throw new Error(j.error || 'فشل تحديث كلمة المرور');
       setCurrent('');
       setNext('');
       setConfirm('');
-      toast.show('Password updated.', 'success');
+      toast.show('تم تحديث كلمة المرور.', 'success');
     } catch (err: any) {
       toast.show(err.message || 'Failed.', 'error');
     } finally {
@@ -367,10 +367,10 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <Section
-        title="Change password"
-        subtitle="You'll stay signed in on this device after changing your password."
+        title="تغيير كلمة المرور"
+        subtitle="ستبقى مسجل الدخول على هذا الجهاز بعد تغيير كلمة المرور."
       >
-        <Field label="Current password">
+        <Field label="كلمة المرور الحالية">
           <input
             type="password"
             value={current}
@@ -379,7 +379,7 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
             className={inputCls}
           />
         </Field>
-        <Field label="New password">
+        <Field label="كلمة المرور الجديدة">
           <input
             type="password"
             value={next}
@@ -388,10 +388,10 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
             className={inputCls}
           />
           <p className="mt-1 text-xs text-neutral-500">
-            Minimum 8 characters. Use a mix of letters, numbers, and symbols.
+            الحد الأدنى 8 أحرف. استخدم مزيجًا من الحروف والأرقام والرموز.
           </p>
         </Field>
-        <Field label="Confirm new password">
+        <Field label="تأكيد كلمة المرور الجديدة">
           <input
             type="password"
             value={confirm}
@@ -413,7 +413,7 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
           ) : (
             <Lock className="h-4 w-4" />
           )}
-          Update password
+          تحديث كلمة المرور
         </button>
       </div>
     </form>
@@ -424,6 +424,7 @@ function PasswordPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
  * Preferences panel
  * ========================================================= */
 function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
+  const router = useRouter();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingBotAvatar, setUploadingBotAvatar] = useState(false);
@@ -475,7 +476,7 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
 
   async function uploadBotAvatar(file: File) {
     if (file.size > 5 * 1024 * 1024) {
-      toast.show('Bot avatar must be under 5 MB.', 'error');
+      toast.show('يجب أن يكون حجم صورة البوت أقل من 5 ميجابايت.', 'error');
       return;
     }
     setUploadingBotAvatar(true);
@@ -486,7 +487,7 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Upload failed');
       update('botAvatarUrl', j.url);
-      toast.show('Bot avatar uploaded.', 'success');
+      toast.show('تم رفع صورة البوت.', 'success');
     } catch (err: any) {
       toast.show(err.message || 'Upload failed.', 'error');
     } finally {
@@ -503,10 +504,17 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prefs),
       });
+
+      // keep locale cookie in sync so full app switches immediately
+      if (typeof document !== 'undefined') {
+        const nextLocale = ((prefs?.language ?? 'ar') === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+        document.cookie = `locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+      }
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Failed to save');
       setPrefs(j.preferences);
-      toast.show('Preferences saved.', 'success');
+      toast.show('تم حفظ التفضيلات.', 'success');
+      router.refresh();
     } catch (err: any) {
       toast.show(err.message || 'Failed.', 'error');
     } finally {
@@ -517,41 +525,38 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <Section
-        title="Defaults"
-        subtitle="Pre-fill image size and language used across Nova."
+        title="الإعدادات الافتراضية"
+        subtitle="تحديد حجم الصورة واللغة المستخدمة افتراضيًا في alaa ai."
       >
-        <Field label="Default image size">
+        <Field label="حجم الصورة الافتراضي">
           <select
             value={prefs.defaultImageSize || '1024x1024'}
             onChange={(e) => update('defaultImageSize', e.target.value)}
             className={inputCls}
           >
-            <option value="512x512">512 × 512 (fast, square)</option>
-            <option value="768x768">768 × 768 (balanced)</option>
-            <option value="1024x1024">1024 × 1024 (default)</option>
-            <option value="1024x1792">1024 × 1792 (portrait)</option>
-            <option value="1792x1024">1792 × 1024 (landscape)</option>
+            <option value="512x512">512 × 512 (سريع، مربع)</option>
+            <option value="768x768">768 × 768 (متوازن)</option>
+            <option value="1024x1024">1024 × 1024 (افتراضي)</option>
+            <option value="1024x1792">1024 × 1792 (عمودي)</option>
+            <option value="1792x1024">1792 × 1024 (أفقي)</option>
           </select>
         </Field>
 
-        <Field label="Language">
+        <Field label="اللغة / Language">
           <select
-            value={prefs.language || 'en'}
-            onChange={(e) => update('language', e.target.value)}
+            value={prefs.language || 'ar'}
+            onChange={(e) => update('language', e.target.value as 'ar' | 'en')}
             className={inputCls}
           >
+            <option value="ar">العربية</option>
             <option value="en">English</option>
-            <option value="es">Español</option>
-            <option value="pt-BR">Português (Brasil)</option>
-            <option value="fr">Français</option>
-            <option value="de">Deutsch</option>
           </select>
         </Field>
       </Section>
 
       <Section
-        title="Bot avatar"
-        subtitle="Choose animated-style avatars (Netflix-like) or upload your own."
+        title="صورة البوت"
+        subtitle="اختر صورة متحركة للبوت أو ارفع صورتك الخاصة."
       >
         <div className="flex items-center gap-3">
           <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-neutral-700 bg-neutral-800">
@@ -559,12 +564,12 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={prefs.botAvatarUrl}
-                alt="Bot avatar preview"
+                alt="معاينة صورة البوت"
                 className="h-full w-full object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
-                No image
+                لا توجد صورة
               </div>
             )}
             {uploadingBotAvatar && (
@@ -576,7 +581,7 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
 
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200">
             <Upload className="h-4 w-4" />
-            Upload bot avatar
+            رفع صورة البوت
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
@@ -596,7 +601,7 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
               className="inline-flex items-center gap-2 rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700"
             >
               <X className="h-4 w-4" />
-              Reset
+              إعادة تعيين
             </button>
           )}
         </div>
@@ -614,12 +619,12 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
                     ? 'border-primary-500 ring-2 ring-primary-500/40 scale-105'
                     : 'border-neutral-700 hover:border-neutral-500 hover:scale-105'
                 }`}
-                title={`Avatar ${i + 1}`}
+                title={`صورة ${i + 1}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
-                  alt={`Avatar ${i + 1}`}
+                  alt={`صورة ${i + 1}`}
                   className="h-16 w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -629,16 +634,16 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
         </div>
       </Section>
 
-      <Section title="Behavior" subtitle="Toggle optional features.">
+      <Section title="السلوك" subtitle="تفعيل أو تعطيل الميزات الاختيارية.">
         <Toggle
-          label="Save chat and generation history"
-          description="When off, new items are not persisted. Existing items remain."
+          label="حفظ سجل الشات والتوليد"
+          description="عند الإيقاف لن يتم حفظ العناصر الجديدة، بينما تبقى العناصر السابقة."
           checked={!!prefs.saveHistory}
           onChange={(v) => update('saveHistory', v)}
         />
         <Toggle
-          label="Voice replies (browser TTS)"
-          description="Reads Nova's responses aloud using your browser's speech synth."
+          label="الردود الصوتية (TTS من المتصفح)"
+          description="يقرأ ردود alaa ai بصوت مسموع باستخدام محرك الصوت في المتصفح."
           checked={!!prefs.voiceReplies}
           onChange={(v) => update('voiceReplies', v)}
         />
@@ -655,7 +660,7 @@ function PreferencesPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Save preferences
+          حفظ التفضيلات
         </button>
       </div>
     </form>
@@ -674,16 +679,16 @@ function DangerPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
   async function onDelete(e: React.FormEvent) {
     e.preventDefault();
     if (confirmText !== 'DELETE') {
-      toast.show('Type DELETE to confirm.', 'error');
+      toast.show('اكتب DELETE للتأكيد.', 'error');
       return;
     }
     if (!pw) {
-      toast.show('Password is required.', 'error');
+      toast.show('كلمة المرور مطلوبة.', 'error');
       return;
     }
     if (
       !confirm(
-        'This permanently deletes your account, conversations, and generations. Continue?'
+        'سيتم حذف حسابك وجميع المحادثات والمحتوى المولد نهائيًا. هل تريد المتابعة؟'
       )
     )
       return;
@@ -696,8 +701,8 @@ function DangerPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
         body: JSON.stringify({ password: pw }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'Failed to delete');
-      toast.show('Account deleted. Goodbye.', 'success');
+      if (!r.ok) throw new Error(j.error || 'فشل حذف الحساب');
+      toast.show('تم حذف الحساب نهائيًا.', 'success');
       router.replace('/');
     } catch (err: any) {
       toast.show(err.message || 'Failed.', 'error');
@@ -709,14 +714,14 @@ function DangerPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
   return (
     <form onSubmit={onDelete} className="space-y-6">
       <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-5">
-        <h3 className="text-lg font-semibold text-red-300">Delete account</h3>
+        <h3 className="text-lg font-semibold text-red-300">حذف الحساب</h3>
         <p className="mt-1 text-sm text-red-300/70">
-          This permanently removes your profile, all conversations, and all
-          generated images & videos. This action cannot be undone.
+          سيؤدي هذا إلى حذف ملفك الشخصي وجميع المحادثات وجميع الصور والفيديوهات
+          المولدة نهائيًا. لا يمكن التراجع عن هذا الإجراء.
         </p>
 
         <div className="mt-5 space-y-4">
-          <Field label="Password">
+          <Field label="كلمة المرور">
             <input
               type="password"
               value={pw}
@@ -725,7 +730,7 @@ function DangerPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
               className={inputCls}
             />
           </Field>
-          <Field label="Type DELETE to confirm">
+          <Field label="اكتب DELETE للتأكيد">
             <input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
@@ -746,7 +751,7 @@ function DangerPanel({ toast }: { toast: ReturnType<typeof useToast> }) {
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            Permanently delete account
+            حذف الحساب نهائيًا
           </button>
         </div>
       </div>

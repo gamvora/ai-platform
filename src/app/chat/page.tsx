@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatMessage, { ChatMessageData } from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
+import VoiceCallModal from '@/components/VoiceCallModal';
 import { useToast } from '@/components/Toast';
 import { Sparkles, MessageSquare, Image as ImageIcon, Video } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function ChatPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [botAvatarUrl, setBotAvatarUrl] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [openVoiceCall, setOpenVoiceCall] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -123,6 +125,55 @@ export default function ChatPage() {
     }
   }
 
+  async function onUserUtterance(text: string): Promise<string> {
+    const userMsg: ChatMessageData = {
+      role: 'user',
+      content: text,
+      images: [],
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setSending(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, message: text, images: [] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل الحصول على الرد');
+
+      setConversationId(data.conversationId);
+      const assistantText = data.message?.content || '';
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: assistantText,
+          createdAt: data.message.createdAt,
+          botAvatarUrl,
+        },
+      ]);
+      setRefreshKey((k) => k + 1);
+      return assistantText;
+    } catch (err: any) {
+      const message = err.message || 'حدث خطأ في الاتصال الصوتي';
+      toast.error(message);
+      const fallback = `⚠️ **خطأ**: ${message}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: fallback,
+        },
+      ]);
+      return fallback;
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -160,9 +211,19 @@ export default function ChatPage() {
 
         {/* Input */}
         <div className="p-2 sm:p-4 border-t border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <ChatInput onSend={send} disabled={sending} />
+          <ChatInput
+            onSend={send}
+            disabled={sending || openVoiceCall}
+            onVoiceCallClick={() => setOpenVoiceCall(true)}
+          />
         </div>
       </main>
+
+      <VoiceCallModal
+        open={openVoiceCall}
+        onClose={() => setOpenVoiceCall(false)}
+        onUserUtterance={onUserUtterance}
+      />
     </div>
   );
 }
