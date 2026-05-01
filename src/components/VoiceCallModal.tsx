@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Mic, MicOff, PhoneOff, Play, Pause, Volume2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
-type CallState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'paused';
+type CallState = 'ready' | 'listening' | 'processing' | 'speaking' | 'paused' | 'ended';
 
 interface VoiceCallModalProps {
   open: boolean;
@@ -21,6 +21,11 @@ function pickVoiceOptions(all: SpeechSynthesisVoice[], lang: string) {
   return pool.slice(0, 6);
 }
 
+function isMobileDevice() {
+  if (typeof navigator === 'undefined') return false;
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '');
+}
+
 export default function VoiceCallModal({
   open,
   onClose,
@@ -29,7 +34,7 @@ export default function VoiceCallModal({
 }: VoiceCallModalProps) {
   const toast = useToast();
 
-  const [state, setState] = useState<CallState>('idle');
+  const [state, setState] = useState<CallState>('ready');
   const [muted, setMuted] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
@@ -37,37 +42,53 @@ export default function VoiceCallModal({
   const [pitch, setPitch] = useState(1);
   const [language, setLanguage] = useState(defaultLanguage);
   const [level, setLevel] = useState(0);
-  const [ttsMode, setTtsMode] = useState<'web' | 'api'>('web');
+  const [ttsMode, setTtsMode] = useState<'web' | 'api'>('api');
   const [speechSupported, setSpeechSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const recognitionRef = useRef<any>(null);
-  const callActiveRef = useRef(false);
+  const mountedRef = useRef(false);
+  const activeRef = useRef(false);
+  const pausedRef = useRef(false);
   const speakingRef = useRef(false);
-  const pauseRef = useRef(false);
-  const audioCtxRef = useRef<(AudioContext & { createMediaStreamSource: (stream: MediaStream) => MediaStreamAudioSourceNode }) | null>(null);
+  const processingRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
+  const voiceCycleIdRef = useRef(0);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
-  const mountedRef = useRef(false);
-  const restartTimerRef = useRef<number | null>(null);
 
   const voiceOptions = useMemo(() => pickVoiceOptions(voices, language), [voices, language]);
 
+  function safeSetState<T>(setter: (value: T) => void, value: T) {
+    if (mountedRef.current) setter(value);
+  }
+
+  function clearRestartTimer() {
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+  }
+
   useEffect(() => {
     mountedRef.current = true;
+
     if (typeof window !== 'undefined' && window.matchMedia) {
       const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
       setReducedMotion(!!mq.matches);
       const onChange = () => setReducedMotion(!!mq.matches);
+
       try {
         mq.addEventListener('change', onChange);
       } catch {
-        // Safari fallback
         // @ts-ignore
         mq.addListener?.(onChange);
       }
+
       return () => {
         mountedRef.current = false;
         try {
@@ -78,6 +99,7 @@ export default function VoiceCallModal({
         }
       };
     }
+
     return () => {
       mountedRef.current = false;
     };
@@ -85,9 +107,16 @@ export default function VoiceCallModal({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     setSpeechSupported(!!SR);
     setTtsSupported('speechSynthesis' in window);
+
+    if (isMobileDevice()) {
+      setTtsMode('api');
+    } else {
+      setTtsMode('web');
+    }
   }, []);
 
   useEffect(() => {
@@ -95,7 +124,9 @@ export default function VoiceCallModal({
       setVoices([]);
       return;
     }
+
     const synth = window.speechSynthesis;
+
     const loadVoices = () => {
       try {
         const v = synth.getVoices() || [];
@@ -111,8 +142,10 @@ export default function VoiceCallModal({
         setVoices([]);
       }
     };
+
     loadVoices();
     synth.onvoiceschanged = loadVoices;
+
     return () => {
       synth.onvoiceschanged = null;
     };
@@ -121,23 +154,29 @@ export default function VoiceCallModal({
   useEffect(() => {
     if (!open) return;
 
-    callActiveRef.current = false;
-    pauseRef.current = false;
+    activeRef.current = false;
+    pausedRef.current = false;
     speakingRef.current = false;
-    setState('idle');
+    processingRef.current = false;
+    setState('ready');
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         endCall();
         return;
       }
+
       if (e.key.toLowerCase() === 'v') {
-        if (state === 'idle' || state === 'paused') void startCall();
-        else endCall();
+        if (state === 'ready' || state === 'paused' || state === 'ended') {
+          void startCall();
+        } else {
+          endCall();
+        }
       }
     };
 
     window.addEventListener('keydown', onKey);
+
     return () => {
       window.removeEventListener('keydown', onKey);
       cleanup();
@@ -146,8 +185,10 @@ export default function VoiceCallModal({
 
   async function ensureAudioUnlocked() {
     if (typeof window === 'undefined') return;
+
     const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!AC) return;
+
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new AC();
       const ctx = audioCtxRef.current;
@@ -155,7 +196,7 @@ export default function VoiceCallModal({
         await ctx.resume();
       }
     } catch {
-      // ignore unlock errors
+      // noop
     }
   }
 
@@ -165,12 +206,15 @@ export default function VoiceCallModal({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!AC) return;
+      if (!audioCtxRef.current) {
+        const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (!AC) return;
+        audioCtxRef.current = new AC();
+      }
 
-      if (!audioCtxRef.current) audioCtxRef.current = new AC();
       const ctx = audioCtxRef.current;
       if (!ctx) return;
+
       if (ctx.state === 'suspended') await ctx.resume();
 
       const source = ctx.createMediaStreamSource(stream);
@@ -180,24 +224,28 @@ export default function VoiceCallModal({
       analyserRef.current = analyser;
 
       const data = new Uint8Array(analyser.frequencyBinCount);
+
       const tick = () => {
         if (!mountedRef.current) return;
         if (!analyserRef.current) return;
+
         analyserRef.current.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        setLevel(Math.min(1, avg / 80));
+        safeSetState(setLevel, Math.min(1, avg / 85));
+
         rafRef.current = requestAnimationFrame(tick);
       };
+
       tick();
     } catch {
-      setLevel(0);
+      safeSetState(setLevel, 0);
     }
   }
 
   function stopMicLevel() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
-    setLevel(0);
+    safeSetState(setLevel, 0);
 
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -207,18 +255,40 @@ export default function VoiceCallModal({
     analyserRef.current = null;
   }
 
+  function stopRecognition() {
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+    recognitionRef.current = null;
+  }
+
   function selectedVoice() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const all = voices.length ? voices : window.speechSynthesis.getVoices();
     return all.find((v) => v.voiceURI === selectedVoiceURI) || null;
   }
 
-  async function speakViaApi(clean: string) {
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: clean, lang: language }),
-    });
+  async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs = 20000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(input, { ...init, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function speakViaApi(text: string) {
+    const res = await fetchWithTimeout(
+      '/api/tts',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang: language }),
+      },
+      20000
+    );
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -240,6 +310,7 @@ export default function VoiceCallModal({
         URL.revokeObjectURL(url);
         resolve();
       };
+
       audio.onerror = () => {
         URL.revokeObjectURL(url);
         reject(new Error('Audio playback failed'));
@@ -253,23 +324,25 @@ export default function VoiceCallModal({
   }
 
   async function speak(text: string) {
-    if (muted) return;
+    if (muted || !activeRef.current) return;
+
     const clean = (text || '').replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!clean) return;
 
-    setState('speaking');
     speakingRef.current = true;
+    safeSetState(setState, 'speaking');
+
+    const myCycle = ++voiceCycleIdRef.current;
 
     try {
-      const hasWebTts = typeof window !== 'undefined' && 'speechSynthesis' in window;
-      if (hasWebTts) {
-        setTtsMode('web');
-        try {
-          window.speechSynthesis.cancel();
-        } catch {}
+      const forceApi = isMobileDevice();
+      const hasWebTts = typeof window !== 'undefined' && 'speechSynthesis' in window && !forceApi;
 
-        await new Promise<void>(async (resolveWeb) => {
+      if (hasWebTts && ttsMode === 'web') {
+        await new Promise<void>((resolve) => {
           try {
+            window.speechSynthesis.cancel();
+
             const utter = new SpeechSynthesisUtterance(clean);
             utter.lang = language;
             utter.rate = rate;
@@ -277,41 +350,43 @@ export default function VoiceCallModal({
             const v = selectedVoice();
             if (v) utter.voice = v;
 
-            utter.onend = () => resolveWeb();
-            utter.onerror = () => resolveWeb();
+            utter.onend = () => resolve();
+            utter.onerror = () => resolve();
 
             window.speechSynthesis.speak(utter);
           } catch {
-            resolveWeb();
+            resolve();
           }
         });
-
-        return;
+      } else {
+        safeSetState(setTtsMode, 'api');
+        await speakViaApi(clean);
       }
-
-      setTtsMode('api');
-      await speakViaApi(clean);
     } catch {
+      // fallback
       try {
-        setTtsMode('api');
+        safeSetState(setTtsMode, 'api');
         await speakViaApi(clean);
       } catch (e: any) {
         toast.error(e?.message || 'تعذر تشغيل الصوت');
       }
     } finally {
-      speakingRef.current = false;
+      if (myCycle === voiceCycleIdRef.current) {
+        speakingRef.current = false;
+      }
     }
   }
 
-  function clearRestartTimer() {
-    if (restartTimerRef.current) {
-      window.clearTimeout(restartTimerRef.current);
-      restartTimerRef.current = null;
-    }
+  function scheduleRecognitionRestart(delay = 350) {
+    if (!activeRef.current || pausedRef.current || speakingRef.current || processingRef.current) return;
+    clearRestartTimer();
+    restartTimerRef.current = window.setTimeout(() => {
+      startRecognitionLoop();
+    }, delay);
   }
 
   function startRecognitionLoop() {
-    if (!callActiveRef.current || pauseRef.current || speakingRef.current) return;
+    if (!activeRef.current || pausedRef.current || speakingRef.current || processingRef.current) return;
     if (!speechSupported) {
       toast.error('المتصفح لا يدعم الإدخال الصوتي');
       return;
@@ -323,63 +398,64 @@ export default function VoiceCallModal({
       return;
     }
 
-    setState('listening');
+    safeSetState(setState, 'listening');
+
     const rec = new SR();
     recognitionRef.current = rec;
+
     rec.lang = language;
+    rec.continuous = false;
     rec.interimResults = false;
     rec.maxAlternatives = 1;
-    rec.continuous = false;
 
     rec.onresult = async (event: any) => {
       const transcript = (event?.results?.[0]?.[0]?.transcript || '').trim();
       if (!transcript) {
-        if (callActiveRef.current && !pauseRef.current) startRecognitionLoop();
+        scheduleRecognitionRestart();
         return;
       }
 
-      setState('thinking');
+      processingRef.current = true;
+      safeSetState(setState, 'processing');
+
+      stopRecognition();
+
       try {
         const reply = await onUserUtterance(transcript);
-        if (!callActiveRef.current) return;
+        if (!activeRef.current) return;
+
         await speak(reply || '');
       } catch (e: any) {
         toast.error(e?.message || 'خطأ أثناء المعالجة الصوتية');
       } finally {
-        if (callActiveRef.current && !pauseRef.current) startRecognitionLoop();
+        processingRef.current = false;
+        if (activeRef.current && !pausedRef.current) {
+          scheduleRecognitionRestart(280);
+        }
       }
     };
 
     rec.onerror = (e: any) => {
-      if (!callActiveRef.current) return;
-      if (e?.error === 'not-allowed') {
+      if (!activeRef.current) return;
+
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
         toast.error('تم رفض إذن الميكروفون');
         endCall();
         return;
       }
-      if (!pauseRef.current) {
-        clearRestartTimer();
-        restartTimerRef.current = window.setTimeout(() => {
-          startRecognitionLoop();
-        }, 450);
-      }
+
+      scheduleRecognitionRestart(450);
     };
 
     rec.onend = () => {
-      if (!callActiveRef.current || pauseRef.current || speakingRef.current) return;
-      clearRestartTimer();
-      restartTimerRef.current = window.setTimeout(() => {
-        startRecognitionLoop();
-      }, 300);
+      if (!activeRef.current || pausedRef.current || speakingRef.current || processingRef.current) return;
+      scheduleRecognitionRestart(300);
     };
 
     try {
       rec.start();
     } catch {
-      clearRestartTimer();
-      restartTimerRef.current = window.setTimeout(() => {
-        startRecognitionLoop();
-      }, 500);
+      scheduleRecognitionRestart(450);
     }
   }
 
@@ -389,46 +465,59 @@ export default function VoiceCallModal({
       return;
     }
 
-    pauseRef.current = false;
-    callActiveRef.current = true;
-
+    await ensureAudioUnlocked();
     await initMicLevel();
+
+    activeRef.current = true;
+    pausedRef.current = false;
+    processingRef.current = false;
+    speakingRef.current = false;
+
+    safeSetState(setState, 'listening');
     startRecognitionLoop();
   }
 
   function pauseCall() {
-    pauseRef.current = true;
-    setState('paused');
-    try {
-      recognitionRef.current?.stop();
-    } catch {}
+    if (!activeRef.current) return;
+
+    pausedRef.current = true;
+    stopRecognition();
+    clearRestartTimer();
+
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
       } catch {}
     }
+
+    safeSetState(setState, 'paused');
   }
 
   function resumeCall() {
-    if (!callActiveRef.current) return;
-    pauseRef.current = false;
+    if (!activeRef.current) return;
+
+    pausedRef.current = false;
+    processingRef.current = false;
+    speakingRef.current = false;
+
+    safeSetState(setState, 'listening');
     startRecognitionLoop();
   }
 
   function endCall() {
-    callActiveRef.current = false;
-    pauseRef.current = false;
-    setState('idle');
-    onClose();
+    activeRef.current = false;
+    pausedRef.current = false;
+    processingRef.current = false;
+    speakingRef.current = false;
+
+    safeSetState(setState, 'ended');
     cleanup();
+    onClose();
   }
 
   function cleanup() {
     clearRestartTimer();
-    try {
-      recognitionRef.current?.stop();
-    } catch {}
-    recognitionRef.current = null;
+    stopRecognition();
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
@@ -436,7 +525,7 @@ export default function VoiceCallModal({
       } catch {}
     }
 
-    speakingRef.current = false;
+    voiceCycleIdRef.current += 1;
     stopMicLevel();
   }
 
@@ -452,8 +541,11 @@ export default function VoiceCallModal({
   if (!open) return null;
 
   const orbScale = reducedMotion ? 1 : 1 + level * 0.08;
-  const glowA = reducedMotion ? 25 : 40 + level * 60;
-  const glowB = reducedMotion ? 15 : 20 + level * 40;
+  const glowA = reducedMotion ? 24 : 36 + level * 60;
+  const glowB = reducedMotion ? 14 : 20 + level * 36;
+
+  const canStart = state === 'ready' || state === 'paused' || state === 'ended';
+  const isPaused = state === 'paused';
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-6">
@@ -541,18 +633,21 @@ export default function VoiceCallModal({
             <div className="absolute inset-0 grid place-items-center text-white">
               {state === 'listening' && <Mic className="w-12 h-12" />}
               {state === 'speaking' && <Volume2 className="w-12 h-12" />}
-              {state === 'thinking' && <div className="text-sm">AI...</div>}
-              {(state === 'idle' || state === 'paused') && <Play className="w-12 h-12" />}
+              {state === 'processing' && <div className="text-sm">AI...</div>}
+              {(state === 'ready' || state === 'paused' || state === 'ended') && (
+                <Play className="w-12 h-12" />
+              )}
             </div>
           </div>
         </div>
 
         <div className="text-center mb-5 text-white/80 text-sm sm:text-base">
-          {state === 'idle' && 'جاهز لبدء المكالمة'}
+          {state === 'ready' && 'جاهز لبدء المكالمة'}
           {state === 'listening' && 'أستمع إليك الآن...'}
-          {state === 'thinking' && 'أفكر في الرد...'}
+          {state === 'processing' && 'أفكر في الرد...'}
           {state === 'speaking' && 'أتحدث الآن...'}
           {state === 'paused' && 'المكالمة متوقفة مؤقتًا'}
+          {state === 'ended' && 'تم إنهاء المكالمة'}
           {!speechSupported && <div className="mt-2 text-amber-300">هذا المتصفح لا يدعم STT.</div>}
           {!ttsSupported && (
             <div className="mt-1 text-cyan-300">سيتم استخدام API للقراءة الصوتية بدلًا من المتصفح.</div>
@@ -568,21 +663,13 @@ export default function VoiceCallModal({
             معاينة الصوت
           </button>
 
-          {state === 'idle' ? (
+          {canStart ? (
             <button
               onClick={() => void startCall()}
               className="rounded-xl border border-emerald-500/50 bg-emerald-500/20 px-4 py-3 text-emerald-100 inline-flex items-center gap-2 min-h-[44px]"
             >
               <Play className="w-4 h-4" />
-              Start Voice Call
-            </button>
-          ) : state === 'paused' ? (
-            <button
-              onClick={resumeCall}
-              className="rounded-xl border border-primary-500/50 bg-primary-500/20 px-4 py-3 text-primary-100 inline-flex items-center gap-2 min-h-[44px]"
-            >
-              <Play className="w-4 h-4" />
-              متابعة
+              {isPaused ? 'متابعة' : 'Start Voice Call'}
             </button>
           ) : (
             <button
