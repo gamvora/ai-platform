@@ -507,6 +507,13 @@ export async function chatCompletion(opts: ChatCompletionOptions) {
  *   2. HuggingFace (free token tier, if available).
  *   3. Blackbox (optional paid fallback when USE_BLACKBOX_PAID=true).
  */
+export interface ImageGenerationResult {
+  urls: string[];
+  requestedModel: string;
+  effectiveModel: string;
+  provider: 'pollinations' | 'huggingface' | 'blackbox';
+}
+
 export async function generateImage(
   prompt: string,
   options: {
@@ -515,7 +522,7 @@ export async function generateImage(
     size?: string;
     style?: 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic' | 'none';
   } = {}
-): Promise<string[]> {
+): Promise<ImageGenerationResult> {
   const cleanPrompt = (prompt || '').trim();
   if (!cleanPrompt) throw new Error('Prompt is required');
 
@@ -531,12 +538,56 @@ export async function generateImage(
     none: '',
   };
   const finalPrompt = cleanPrompt + (styleSuffix[options.style || 'none'] || '');
+
+  // Strict model mapping: no silent fallback to "auto".
+  // If a specific requested model has no provider mapping, throw explicit error.
+  const requestedModel = (options.model || 'auto').trim().toLowerCase();
+  const modelMap: Record<string, string | null> = {
+    auto: null, // resolved by style
+    'gpt-image-2': 'flux',
+    'gpt-image-1.5': 'flux',
+    'gpt-image-1': 'flux',
+    'gpt-image-1-mini': 'flux',
+    'dall-e-3': 'flux',
+    'dall-e-2': 'flux',
+    'gemini-2.5-flash-image-preview': 'flux',
+    'gemini-3.1-flash-image-preview': 'flux',
+    'flux.1-schnell': 'flux',
+    'flux.1-kontext': 'flux',
+    'stable-diffusion-xl': 'sdxl',
+    'stable-diffusion-3': 'sdxl',
+  };
+
+  if (!(requestedModel in modelMap)) {
+    throw new Error(`Selected model is not supported: ${requestedModel}`);
+  }
+
+  const stylePreferredModel =
+    options.style === 'realistic'
+      ? 'flux-realism'
+      : options.style === 'anime'
+      ? 'flux-anime'
+      : 'flux';
+
   const pollModel =
-    options.style === 'realistic' ? 'flux-realism' : options.style === 'anime' ? 'flux-anime' : 'flux';
+    requestedModel === 'auto'
+      ? stylePreferredModel
+      : modelMap[requestedModel];
+
+  if (!pollModel) {
+    throw new Error(`Selected model cannot be resolved: ${requestedModel}`);
+  }
 
   // ----- Stage 1: Pollinations.ai (primary free provider) -----
   const pollUrl = pollinationsUrl(finalPrompt, { width: w, height: h, model: pollModel });
-  if (pollUrl) return [pollUrl];
+  if (pollUrl) {
+    return {
+      urls: [pollUrl],
+      requestedModel,
+      effectiveModel: pollModel,
+      provider: 'pollinations',
+    };
+  }
 
   // ----- Stage 2: HuggingFace -----
   try {
@@ -544,7 +595,14 @@ export async function generateImage(
       width: w,
       height: h,
     });
-    if (local) return [local];
+    if (local) {
+      return {
+        urls: [local],
+        requestedModel,
+        effectiveModel: HF_T2I_MODEL,
+        provider: 'huggingface',
+      };
+    }
   } catch {
     // continue
   }
@@ -571,9 +629,23 @@ export async function generateImage(
           const urls = data.data
             .map((d: any) => d.url || (d.b64_json ? `data:image/png;base64,${d.b64_json}` : null))
             .filter(Boolean);
-          if (urls.length) return urls;
+          if (urls.length) {
+            return {
+              urls,
+              requestedModel,
+              effectiveModel: options.model || MODELS.image,
+              provider: 'blackbox',
+            };
+          }
         }
-        if (Array.isArray(data?.images) && data.images.length) return data.images;
+        if (Array.isArray(data?.images) && data.images.length) {
+          return {
+            urls: data.images,
+            requestedModel,
+            effectiveModel: options.model || MODELS.image,
+            provider: 'blackbox',
+          };
+        }
       }
     } catch {
       // ignore

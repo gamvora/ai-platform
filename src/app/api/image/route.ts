@@ -10,6 +10,26 @@ export const runtime = 'nodejs';
 const VALID_STYLES = ['realistic', 'anime', '3d', 'fantasy', 'cinematic', 'none'] as const;
 const VALID_SIZES = ['1024x1024', '1024x1792', '1792x1024', '768x768'] as const;
 
+/**
+ * Puter-style model ids accepted from frontend.
+ * Backend keeps allowlist strict for safety and predictable routing.
+ */
+const VALID_MODELS = [
+  'auto',
+  'gpt-image-2',
+  'gpt-image-1.5',
+  'gpt-image-1',
+  'gpt-image-1-mini',
+  'dall-e-3',
+  'dall-e-2',
+  'gemini-2.5-flash-image-preview',
+  'gemini-3.1-flash-image-preview',
+  'flux.1-schnell',
+  'flux.1-kontext',
+  'stable-diffusion-xl',
+  'stable-diffusion-3',
+] as const;
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
@@ -29,6 +49,7 @@ export async function POST(req: NextRequest) {
     const prompt: string = body?.prompt;
     const rawStyle: string = body?.style ?? 'none';
     const rawSize: string = body?.size ?? '1024x1024';
+    const rawModel: string = body?.model ?? 'auto';
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 3) {
       return NextResponse.json(
@@ -41,30 +62,39 @@ export async function POST(req: NextRequest) {
       ? (rawStyle as (typeof VALID_STYLES)[number])
       : 'none';
     const size = (VALID_SIZES as readonly string[]).includes(rawSize) ? rawSize : '1024x1024';
+    const model = (VALID_MODELS as readonly string[]).includes(rawModel) ? rawModel : 'auto';
 
-    let remoteUrls: string[] = [];
+    let generation;
     try {
-      remoteUrls = await generateImage(prompt.trim(), { style, size });
+      generation = await generateImage(prompt.trim(), { style, size, model });
     } catch (err: any) {
       console.error('[image] generation error:', err?.message);
       return NextResponse.json(
-        { error: err?.message || 'Image generation failed. Please try again.' },
+        {
+          error: err?.message || 'Image generation failed. Please try again.',
+          requestedModel: model,
+        },
         { status: 502 }
       );
     }
 
-    if (!remoteUrls.length) {
+    if (!generation?.urls?.length) {
       return NextResponse.json(
-        { error: 'No image returned. Try rephrasing your prompt.' },
+        { error: 'No image returned. Try rephrasing your prompt.', requestedModel: model },
         { status: 502 }
       );
     }
 
     const now = new Date().toISOString();
-    const items: Generation[] = [];
+    const items: (Generation & {
+      model?: string;
+      requestedModel?: string;
+      effectiveModel?: string;
+      provider?: string;
+    })[] = [];
     // Persist each remote image locally (parallel) so the client loads instantly.
     const persisted = await Promise.all(
-      remoteUrls.map(async (u) => {
+      generation.urls.map(async (u) => {
         const id = newId();
         const localUrl = await persistRemoteImage(u, id);
         return { id, url: localUrl };
@@ -78,6 +108,10 @@ export async function POST(req: NextRequest) {
         prompt: prompt.trim(),
         url: p.url,
         createdAt: now,
+        model: generation.effectiveModel,
+        requestedModel: generation.requestedModel,
+        effectiveModel: generation.effectiveModel,
+        provider: generation.provider,
       });
     }
 
@@ -89,6 +123,10 @@ export async function POST(req: NextRequest) {
         prompt: i.prompt,
         url: i.url,
         createdAt: i.createdAt,
+        model: i.model,
+        requestedModel: i.requestedModel,
+        effectiveModel: i.effectiveModel,
+        provider: i.provider,
       })),
     });
   } catch (err: any) {
@@ -108,11 +146,15 @@ export async function GET() {
 
   const gens = await listGenerations(user.id, 'image');
   return NextResponse.json({
-    images: gens.map((g) => ({
+    images: gens.map((g: any) => ({
       id: g.id,
       prompt: g.prompt,
       url: g.url,
       createdAt: g.createdAt,
+      model: g?.model,
+      requestedModel: g?.requestedModel,
+      effectiveModel: g?.effectiveModel,
+      provider: g?.provider,
     })),
   });
 }

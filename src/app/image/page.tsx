@@ -19,10 +19,28 @@ interface ImageItem {
   prompt: string;
   url: string;
   createdAt: string;
+  model?: string;
+  requestedModel?: string;
+  effectiveModel?: string;
+  provider?: string;
 }
 
 type Style = 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic' | 'none';
 type Size = '1024x1024' | '1024x1792' | '1792x1024' | '768x768';
+type Model =
+  | 'auto'
+  | 'gpt-image-2'
+  | 'gpt-image-1.5'
+  | 'gpt-image-1'
+  | 'gpt-image-1-mini'
+  | 'dall-e-3'
+  | 'dall-e-2'
+  | 'gemini-2.5-flash-image-preview'
+  | 'gemini-3.1-flash-image-preview'
+  | 'flux.1-schnell'
+  | 'flux.1-kontext'
+  | 'stable-diffusion-xl'
+  | 'stable-diffusion-3';
 
 const STYLES: { value: Style; label: string; emoji: string }[] = [
   { value: 'none', label: 'Auto', emoji: '✨' },
@@ -40,6 +58,22 @@ const SIZES: { value: Size; label: string; aspect: string }[] = [
   { value: '768x768', label: 'Compact', aspect: '1:1' },
 ];
 
+const MODELS: { value: Model; label: string }[] = [
+  { value: 'auto', label: 'Auto (Best Free)' },
+  { value: 'gpt-image-2', label: 'GPT Image 2' },
+  { value: 'gpt-image-1.5', label: 'GPT Image 1.5' },
+  { value: 'gpt-image-1', label: 'GPT Image 1' },
+  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini' },
+  { value: 'dall-e-3', label: 'DALL·E 3' },
+  { value: 'dall-e-2', label: 'DALL·E 2' },
+  { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image' },
+  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image' },
+  { value: 'flux.1-schnell', label: 'FLUX.1 Schnell' },
+  { value: 'flux.1-kontext', label: 'FLUX.1 Kontext' },
+  { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL' },
+  { value: 'stable-diffusion-3', label: 'Stable Diffusion 3' },
+];
+
 const PROMPT_IDEAS = [
   'A cinematic shot of a lone astronaut on a neon-lit alien beach at sunset, ultra-detailed, 8k',
   'A cozy wooden cabin inside a snow globe, warm lights, miniature diorama',
@@ -53,6 +87,7 @@ export default function ImagePage() {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState<Style>('none');
   const [size, setSize] = useState<Size>('1024x1024');
+  const [model, setModel] = useState<Model>('auto');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ImageItem[]>([]);
   const [lightbox, setLightbox] = useState<ImageItem | null>(null);
@@ -65,6 +100,22 @@ export default function ImagePage() {
       .catch(() => {});
   }, []);
 
+  function modelLabel(value?: string) {
+    if (!value) return 'Unknown (legacy item)';
+    const m = MODELS.find((x) => x.value === value);
+    return m?.label || value;
+  }
+
+  function preloadImage(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!url) return reject(new Error('Empty image url'));
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Image failed to load'));
+      img.src = displayUrl(url);
+    });
+  }
+
   async function generate() {
     if (!prompt.trim()) {
       toast.info('Describe what you want to see');
@@ -75,14 +126,23 @@ export default function ImagePage() {
       const res = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, style, size }),
+        body: JSON.stringify({ prompt, style, size, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
-      setItems((prev) => [...(data.images || []), ...prev]);
-      toast.success('Image generated!');
+
+      const generated: ImageItem[] = data.images || [];
+      if (!generated.length) throw new Error('No image returned from server');
+
+      const first = generated[0];
+      await preloadImage(first.url);
+
+      setItems((prev) => [...generated, ...prev]);
+      toast.success(
+        `Image generated with ${modelLabel(first.effectiveModel || first.model || first.requestedModel)}`
+      );
     } catch (err: any) {
-      toast.error(err.message || 'Could not generate image');
+      toast.error(err?.message || 'Could not generate/load image');
     } finally {
       setLoading(false);
     }
@@ -178,6 +238,23 @@ export default function ImagePage() {
               onKeyDown={onKeyDown}
               disabled={loading}
             />
+
+            {/* Model selector */}
+            <div className="mb-3">
+              <div className="text-xs text-white/50 mb-2">Model</div>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value as Model)}
+                disabled={loading}
+                className="input w-full"
+              >
+                {MODELS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Style chips */}
             <div className="mb-3">
@@ -321,8 +398,14 @@ export default function ImagePage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
                   <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition">
-                    <p className="text-xs text-white/80 line-clamp-2 mb-2">
+                    <p className="text-xs text-white/80 line-clamp-2 mb-1">
                       {item.prompt}
+                    </p>
+                    <p className="text-[10px] text-primary-300/90 mb-1">
+                      Requested: {modelLabel(item.requestedModel)}
+                    </p>
+                    <p className="text-[10px] text-emerald-300/90 mb-2">
+                      Used: {modelLabel(item.effectiveModel || item.model)}
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-white/50">
@@ -390,6 +473,12 @@ export default function ImagePage() {
                 />
                 <p className="text-sm text-white/80 max-w-2xl text-center">
                   {lightbox.prompt}
+                </p>
+                <p className="text-xs text-primary-300/90">
+                  Requested: {modelLabel(lightbox.requestedModel)}
+                </p>
+                <p className="text-xs text-emerald-300/90">
+                  Used: {modelLabel(lightbox.effectiveModel || lightbox.model)}
                 </p>
                 <div className="flex gap-2">
                   <button

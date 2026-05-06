@@ -74,6 +74,9 @@ interface ResultItem {
   prompt: string;
   url: string;
   createdAt: string;
+  requestedModel?: string;
+  effectiveModel?: string;
+  provider?: string;
 }
 
 export default function ImageTransformTool({
@@ -93,6 +96,7 @@ export default function ImageTransformTool({
   const [secondName, setSecondName] = useState('');
   const [uploading, setUploading] = useState<'source' | 'second' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [model, setModel] = useState('auto');
   const [items, setItems] = useState<ResultItem[]>([]);
 
   useEffect(() => {
@@ -129,6 +133,22 @@ export default function ImageTransformTool({
     }
   }
 
+  const MODEL_OPTIONS = [
+    { value: 'auto', label: 'Auto (Best Free)' },
+    { value: 'gpt-image-2', label: 'GPT Image 2' },
+    { value: 'gpt-image-1.5', label: 'GPT Image 1.5' },
+    { value: 'gpt-image-1', label: 'GPT Image 1' },
+    { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini' },
+    { value: 'dall-e-3', label: 'DALL·E 3' },
+    { value: 'dall-e-2', label: 'DALL·E 2' },
+    { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image' },
+    { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image' },
+    { value: 'flux.1-schnell', label: 'FLUX.1 Schnell' },
+    { value: 'flux.1-kontext', label: 'FLUX.1 Kontext' },
+    { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL' },
+    { value: 'stable-diffusion-3', label: 'Stable Diffusion 3' },
+  ];
+
   async function run() {
     if (!sourceUrl) {
       toast.info('Upload a source image first');
@@ -148,6 +168,7 @@ export default function ImageTransformTool({
       const body: Record<string, any> = {
         prompt: prompt.trim(),
         imageUrl: sourceUrl,
+        model,
       };
       if (config.secondImage) {
         body[config.secondImage.field] = secondUrl;
@@ -359,6 +380,22 @@ export default function ImageTransformTool({
               </div>
             )}
 
+            <div className="mb-3">
+              <div className="text-xs text-white/50 mb-2">Model</div>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                disabled={loading}
+                className="input w-full"
+              >
+                {MODEL_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="text-xs text-white/40">
                 {config.tip || 'Tip: use clear, well-lit photos for the best results.'}
@@ -409,10 +446,18 @@ export default function ImageTransformTool({
                     <p className="text-xs text-white/80 line-clamp-2 mb-2">
                       {item.prompt || '(no prompt)'}
                     </p>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
                       <span className="text-[10px] text-white/50">
                         {formatDate(item.createdAt)}
                       </span>
+                      <span className="text-[10px] text-white/50">
+                        Requested: {item.requestedModel || 'unknown'}
+                      </span>
+                      <span className="text-[10px] text-emerald-300">
+                        Used: {item.effectiveModel || 'unknown'}
+                      </span>
+                    </div>
+                    <div>
                       <button
                         onClick={() => download(item.url)}
                         className="btn-secondary text-xs py-1.5 px-3"

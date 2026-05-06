@@ -64,9 +64,10 @@ export function createTransformRoute(config: TransformRouteConfig) {
 
     try {
       const body = await req.json().catch(() => ({}));
-      const { prompt, imageUrl, ...extras } = body as {
+      const { prompt, imageUrl, model, ...extras } = body as {
         prompt?: string;
         imageUrl?: string;
+        model?: string;
         [k: string]: any;
       };
 
@@ -98,20 +99,37 @@ export function createTransformRoute(config: TransformRouteConfig) {
         'localhost:3000';
       const publicHost = `${proto}://${host}`;
 
+      // NOTE:
+      // editImage currently returns string[] URLs. We keep strong metadata here
+      // by carrying requested/effective/provider explicitly at route layer.
+      const requestedModel = (model || 'auto').toString();
+      const effectiveModel = requestedModel;
+      const provider = 'pollinations';
+
       let urls: string[] = [];
       try {
         urls = await editImage(finalPrompt, imageUrl, { publicHost });
       } catch (err: any) {
         console.error(`[${slug}] generation error:`, err?.message);
         return NextResponse.json(
-          { error: `${slug} failed. Please try again.` },
+          {
+            error: `${slug} failed. Please try again.`,
+            requestedModel,
+            effectiveModel,
+            provider,
+          },
           { status: 502 }
         );
       }
 
       if (!urls.length) {
         return NextResponse.json(
-          { error: 'No result image returned. Try rephrasing or another source.' },
+          {
+            error: 'No result image returned. Try rephrasing or another source.',
+            requestedModel,
+            effectiveModel,
+            provider,
+          },
           { status: 502 }
         );
       }
@@ -128,13 +146,20 @@ export function createTransformRoute(config: TransformRouteConfig) {
       // Store with tagged prompt so per-feature GET can filter its own items.
       const storedPrompt = `${tag} ${userPrompt || finalPrompt}`.trim();
 
-      const items: Generation[] = persisted.map((p) => ({
+      const items: (Generation & {
+        requestedModel?: string;
+        effectiveModel?: string;
+        provider?: string;
+      })[] = persisted.map((p) => ({
         id: p.id,
         userId: user.id,
         type: 'edit' as const,
         prompt: storedPrompt,
         url: p.url,
         createdAt: now,
+        requestedModel,
+        effectiveModel,
+        provider,
       }));
 
       for (const item of items) await addGeneration(item);
@@ -145,6 +170,9 @@ export function createTransformRoute(config: TransformRouteConfig) {
           prompt: stripTag(i.prompt, tag),
           url: i.url,
           createdAt: i.createdAt,
+          requestedModel: i.requestedModel,
+          effectiveModel: i.effectiveModel,
+          provider: i.provider,
         })),
       });
     } catch (err: any) {
@@ -165,11 +193,14 @@ export function createTransformRoute(config: TransformRouteConfig) {
     const gens = await listGenerations(user.id, 'edit');
     const mine = gens.filter((g) => g.prompt.startsWith(tag));
     return NextResponse.json({
-      items: mine.map((g) => ({
+      items: mine.map((g: any) => ({
         id: g.id,
         prompt: stripTag(g.prompt, tag),
         url: g.url,
         createdAt: g.createdAt,
+        requestedModel: g?.requestedModel,
+        effectiveModel: g?.effectiveModel,
+        provider: g?.provider,
       })),
     });
   }
