@@ -35,13 +35,24 @@ async function playAudioBuffer(buf: ArrayBuffer): Promise<void> {
   const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
   if (!AC) throw new Error('AudioContext not supported');
   const ctx: AudioContext = new AC();
-  const decoded = await ctx.decodeAudioData(buf);
-  return new Promise((resolve) => {
+
+  // Safari/Chrome mobile may keep context suspended until a user gesture.
+  if (ctx.state === 'suspended') {
+    try { await ctx.resume(); } catch {}
+  }
+
+  const decoded = await ctx.decodeAudioData(buf.slice(0));
+  return new Promise((resolve, reject) => {
     const src = ctx.createBufferSource();
     src.buffer = decoded;
     src.connect(ctx.destination);
     src.onended = () => { ctx.close(); resolve(); };
-    src.start(0);
+    try {
+      src.start(0);
+    } catch (e) {
+      ctx.close();
+      reject(e);
+    }
   });
 }
 
@@ -266,6 +277,26 @@ export default function VoiceCallModal({ open, onClose, onUserUtterance }: Props
 
   /* ── start / stop call ── */
   async function startCall() {
+    // Ensure an explicit user gesture unlocks audio playback on browsers.
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AC) {
+        const unlockCtx: AudioContext = new AC();
+        if (unlockCtx.state === 'suspended') {
+          await unlockCtx.resume();
+        }
+        // Play a near-silent frame to fully unlock output on iOS/Safari.
+        const osc = unlockCtx.createOscillator();
+        const gain = unlockCtx.createGain();
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(unlockCtx.destination);
+        osc.start();
+        osc.stop(unlockCtx.currentTime + 0.01);
+        setTimeout(() => { try { unlockCtx.close(); } catch {} }, 40);
+      }
+    } catch {}
+
     activeRef.current = true;
     setStarted(true);
     setPhase('listening');
