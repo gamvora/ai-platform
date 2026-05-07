@@ -2,14 +2,13 @@
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 export const dynamic = 'force-dynamic';
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -27,8 +26,8 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
       toast.success(`Welcome back, ${data.user.name}!`);
-      router.push(params.get('redirect') || '/chat');
-      router.refresh();
+      const redirect = params.get('redirect') || '/chat';
+      window.location.href = redirect;
     } catch (err: any) {
       toast.error(err.message);
     } finally {

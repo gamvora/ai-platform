@@ -231,7 +231,7 @@ export default function ImageTransformTool({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <header className="h-14 border-b border-border flex items-center px-4 md:px-6 glass sticky top-0 z-10">

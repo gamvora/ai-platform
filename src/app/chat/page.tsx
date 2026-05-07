@@ -175,7 +175,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar
         activeConversationId={conversationId}
         onSelectConversation={loadConversation}
@@ -193,7 +193,7 @@ export default function ChatPage() {
         </header>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
           {messages.length === 0 ? (
             <EmptyState onSuggest={(s) => send(s, [])} />
           ) : (
@@ -210,12 +210,17 @@ export default function ChatPage() {
         </div>
 
         {/* Input */}
-        <div className="p-2 sm:p-4 border-t border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <ChatInput
-            onSend={send}
-            disabled={sending || openVoiceCall}
-            onVoiceCallClick={() => setOpenVoiceCall(true)}
-          />
+        <div
+          className="shrink-0 border-t border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70"
+          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+        >
+          <div className="p-2 sm:p-3">
+            <ChatInput
+              onSend={send}
+              disabled={sending || openVoiceCall}
+              onVoiceCallClick={() => setOpenVoiceCall(true)}
+            />
+          </div>
         </div>
       </main>
 

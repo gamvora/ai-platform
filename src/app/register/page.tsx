@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -24,8 +22,7 @@ export default function RegisterPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
       toast.success(`Welcome, ${data.user.name}!`);
-      router.push('/chat');
-      router.refresh();
+      window.location.href = '/chat';
     } catch (err: any) {
       toast.error(err.message);
     } finally {

@@ -135,11 +135,24 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       console.error('[chat] Blackbox API error:', err?.message);
       const hasImages = Array.isArray(images) && images.length > 0;
+      const raw = String(err?.message || '');
+      const normalized = raw.toLowerCase();
+
+      const friendly = normalized.includes('blackbox_api_key is not configured')
+        ? 'AI service is not configured on the server. Please set BLACKBOX_API_KEY.'
+        : normalized.includes('cannot access application')
+          ? 'AI provider رفض الطلب: المفتاح لا يملك صلاحية على الموديل الحالي.'
+          : normalized.includes('exhausted balance') || normalized.includes('locked')
+            ? 'AI provider is out of credits at the moment. Please try again later.'
+            : normalized.includes('429')
+              ? 'AI provider is rate-limited right now. Please retry in a moment.'
+              : hasImages
+                ? 'Image analysis failed. Please verify the uploaded image URL is accessible and try again.'
+                : 'AI service is temporarily unavailable. Please try again.';
+
       return NextResponse.json(
         {
-          error: hasImages
-            ? 'Image analysis failed. Please verify the uploaded image URL is accessible and try again.'
-            : 'AI service is temporarily unavailable. Please try again.',
+          error: friendly,
         },
         { status: 502 }
       );

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { useToast } from '@/components/Toast';
-import { Video, Loader2, Download, Sparkles, Info } from 'lucide-react';
+import { Video, Loader2, Download, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
 
@@ -12,39 +12,7 @@ interface VideoItem {
   prompt: string;
   url: string;
   createdAt: string;
-  kind?: 'video' | 'frames';
-  frames?: string[];
-}
-
-/** Frame slideshow player (client-side, pure CSS crossfade) */
-function FrameSlideshow({ frames, fps = 3 }: { frames: string[]; fps?: number }) {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    if (frames.length < 2) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % frames.length), 1000 / fps);
-    return () => clearInterval(t);
-  }, [frames, fps]);
-
-  return (
-    <div className="relative w-full aspect-video bg-black overflow-hidden">
-      {frames.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={src}
-          src={src}
-          alt={`frame ${i + 1}`}
-          loading="lazy"
-          className={
-            'absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ' +
-            (i === idx ? 'opacity-100' : 'opacity-0')
-          }
-        />
-      ))}
-      <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-[10px] uppercase tracking-wider text-white/80">
-        Frame {idx + 1} / {frames.length}
-      </div>
-    </div>
-  );
+  model?: string;
 }
 
 export default function VideoPage() {
@@ -61,42 +29,28 @@ export default function VideoPage() {
   }, []);
 
   async function generate() {
-    if (!prompt.trim()) {
-      toast.info('Describe the video you want');
-      return;
-    }
+    if (!prompt.trim()) { toast.info('Describe the video you want'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: prompt.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
-
-      const newItem: VideoItem = {
-        ...data.video,
-        kind: data.kind,
-        frames: data.frames,
-      };
-      setItems((prev) => [newItem, ...prev]);
+      if (data.video) setItems((prev) => [data.video, ...prev]);
       setPrompt('');
-
-      if (data.kind === 'frames') {
-        toast.info(data.notice || 'Frame slideshow generated (video fallback)');
-      } else {
-        toast.success('Video generated!');
-      }
+      toast.success('Video generated!');
     } catch (err: any) {
-      toast.error(err.message || 'Could not generate video');
+      toast.error(err?.message || 'Video generation failed');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <header className="h-14 border-b border-border flex items-center px-4 md:px-6 glass sticky top-0 z-10">
@@ -115,7 +69,7 @@ export default function VideoPage() {
               Generate <span className="gradient-text">cinematic videos</span>
             </h1>
             <p className="text-white/60">
-              Describe a scene and let AI bring it to life.
+              Powered by Pollinations AI — completely free, no limits.
             </p>
           </div>
 
@@ -128,37 +82,35 @@ export default function VideoPage() {
               onChange={(e) => setPrompt(e.target.value)}
               disabled={loading}
             />
+
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-white/40 flex items-start gap-1.5">
-                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>
-                  Video generation may take longer. If the upstream paid
-                  provider is at capacity, we&apos;ll show a free frame
-                  slideshow preview instead.
-                </span>
-              </div>
+              <p className="text-xs text-white/40">
+                Video generation may take 30–90 seconds. Please be patient.
+              </p>
               <button
                 onClick={generate}
-                disabled={loading}
+                disabled={loading || !prompt.trim()}
                 className="btn-primary shrink-0"
               >
                 {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Rendering…
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Rendering…</>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" /> Generate
-                  </>
+                  <><Sparkles className="w-4 h-4" /> Generate</>
                 )}
               </button>
             </div>
           </div>
 
-          {items.length === 0 ? (
-            <p className="text-center text-white/40 py-8">
-              Your generated videos will appear here.
-            </p>
+          {loading && (
+            <div className="card flex flex-col items-center gap-4 py-12 mb-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+              <p className="text-white/60 text-sm">Generating your video…</p>
+              <p className="text-white/40 text-xs">This may take up to 2 minutes</p>
+            </div>
+          )}
+
+          {items.length === 0 && !loading ? (
+            <p className="text-center text-white/40 py-8">Your generated videos will appear here.</p>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
               {items.map((item) => (
@@ -168,29 +120,25 @@ export default function VideoPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="rounded-xl overflow-hidden bg-surface border border-border"
                 >
-                  {item.kind === 'frames' && item.frames?.length ? (
-                    <FrameSlideshow frames={item.frames} />
-                  ) : (
+                  {item.url.match(/\.(mp4|webm)$/i) ? (
                     <video
                       src={item.url}
                       controls
                       preload="metadata"
                       className="w-full aspect-video bg-black"
                     />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.url}
+                      alt={item.prompt}
+                      className="w-full aspect-video object-cover bg-black"
+                    />
                   )}
                   <div className="p-3">
-                    <p className="text-sm text-white/80 line-clamp-2 mb-2">
-                      {item.prompt}
-                    </p>
+                    <p className="text-sm text-white/80 line-clamp-2 mb-1">{item.prompt}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-white/50">
-                        {formatDate(item.createdAt)}
-                        {item.kind === 'frames' && (
-                          <span className="ml-2 text-amber-400/80">
-                            · slideshow
-                          </span>
-                        )}
-                      </span>
+                      <span className="text-xs text-white/50">{formatDate(item.createdAt)}</span>
                       <a
                         href={item.url}
                         download
@@ -198,8 +146,7 @@ export default function VideoPage() {
                         rel="noopener noreferrer"
                         className="btn-secondary text-xs py-1.5 px-3"
                       >
-                        <Download className="w-3 h-3" />{' '}
-                        {item.kind === 'frames' ? 'Frame' : 'Download'}
+                        <Download className="w-3 h-3" /> Download
                       </a>
                     </div>
                   </div>

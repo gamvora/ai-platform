@@ -20,27 +20,10 @@ interface ImageItem {
   url: string;
   createdAt: string;
   model?: string;
-  requestedModel?: string;
-  effectiveModel?: string;
-  provider?: string;
 }
 
-type Style = 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic' | 'none';
+type Style = 'none' | 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic';
 type Size = '1024x1024' | '1024x1792' | '1792x1024' | '768x768';
-type Model =
-  | 'auto'
-  | 'gpt-image-2'
-  | 'gpt-image-1.5'
-  | 'gpt-image-1'
-  | 'gpt-image-1-mini'
-  | 'dall-e-3'
-  | 'dall-e-2'
-  | 'gemini-2.5-flash-image-preview'
-  | 'gemini-3.1-flash-image-preview'
-  | 'flux.1-schnell'
-  | 'flux.1-kontext'
-  | 'stable-diffusion-xl'
-  | 'stable-diffusion-3';
 
 const STYLES: { value: Style; label: string; emoji: string }[] = [
   { value: 'none', label: 'Auto', emoji: '✨' },
@@ -58,22 +41,6 @@ const SIZES: { value: Size; label: string; aspect: string }[] = [
   { value: '768x768', label: 'Compact', aspect: '1:1' },
 ];
 
-const MODELS: { value: Model; label: string }[] = [
-  { value: 'auto', label: 'Auto (Best Free)' },
-  { value: 'gpt-image-2', label: 'GPT Image 2' },
-  { value: 'gpt-image-1.5', label: 'GPT Image 1.5' },
-  { value: 'gpt-image-1', label: 'GPT Image 1' },
-  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini' },
-  { value: 'dall-e-3', label: 'DALL·E 3' },
-  { value: 'dall-e-2', label: 'DALL·E 2' },
-  { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image' },
-  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image' },
-  { value: 'flux.1-schnell', label: 'FLUX.1 Schnell' },
-  { value: 'flux.1-kontext', label: 'FLUX.1 Kontext' },
-  { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL' },
-  { value: 'stable-diffusion-3', label: 'Stable Diffusion 3' },
-];
-
 const PROMPT_IDEAS = [
   'A cinematic shot of a lone astronaut on a neon-lit alien beach at sunset, ultra-detailed, 8k',
   'A cozy wooden cabin inside a snow globe, warm lights, miniature diorama',
@@ -87,7 +54,6 @@ export default function ImagePage() {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState<Style>('none');
   const [size, setSize] = useState<Size>('1024x1024');
-  const [model, setModel] = useState<Model>('auto');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ImageItem[]>([]);
   const [lightbox, setLightbox] = useState<ImageItem | null>(null);
@@ -100,75 +66,43 @@ export default function ImagePage() {
       .catch(() => {});
   }, []);
 
-  function modelLabel(value?: string) {
-    if (!value) return 'Unknown (legacy item)';
-    const m = MODELS.find((x) => x.value === value);
-    return m?.label || value;
-  }
-
-  function preloadImage(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!url) return reject(new Error('Empty image url'));
-      const img = new Image();
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('Image failed to load'));
-      img.src = displayUrl(url);
-    });
-  }
-
   async function generate() {
-    if (!prompt.trim()) {
-      toast.info('Describe what you want to see');
-      return;
-    }
+    if (!prompt.trim()) { toast.info('Describe what you want to see'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, style, size, model }),
+        body: JSON.stringify({ prompt: prompt.trim(), style, size }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
-
-      const generated: ImageItem[] = data.images || [];
-      if (!generated.length) throw new Error('No image returned from server');
-
-      const first = generated[0];
-      await preloadImage(first.url);
-
-      setItems((prev) => [...generated, ...prev]);
-      toast.success(
-        `Image generated with ${modelLabel(first.effectiveModel || first.model || first.requestedModel)}`
-      );
+      setItems((prev) => [...(data.images || []), ...prev]);
+      setPrompt('');
+      toast.success('Image generated!');
     } catch (err: any) {
-      toast.error(err?.message || 'Could not generate/load image');
+      toast.error(err?.message || 'Image generation failed');
     } finally {
       setLoading(false);
     }
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Cmd/Ctrl + Enter → submit
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !loading) {
       e.preventDefault();
       generate();
     }
   }
 
-  async function download(url: string) {
-    try {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nova-ai-${Date.now()}.png`;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch {
-      toast.error('Download failed');
-    }
+  function download(url: string) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'nova-ai-' + Date.now() + '.png';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function copyPrompt(text: string) {
@@ -178,31 +112,8 @@ export default function ImagePage() {
     );
   }
 
-  function useIdea(idea: string) {
-    setPrompt(idea);
-    textareaRef.current?.focus();
-  }
-
-  // Ensure remote AI URLs load reliably by defaulting to same-origin proxy.
-  function displayUrl(url: string): string {
-    if (!url) return url;
-    if (/^https?:\/\//i.test(url)) {
-      return `/api/img-proxy?src=${encodeURIComponent(url)}`;
-    }
-    return url;
-  }
-
-  // Fallback img handler: if proxied URL fails, try direct URL once.
-  function onImgError(e: React.SyntheticEvent<HTMLImageElement>, originalUrl: string) {
-    const el = e.currentTarget;
-    if (el.dataset.fallbackTried === '1') return;
-    if (!/^https?:\/\//i.test(originalUrl)) return;
-    el.dataset.fallbackTried = '1';
-    el.src = originalUrl;
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <header className="h-14 border-b border-border flex items-center px-4 md:px-6 glass sticky top-0 z-10">
@@ -213,7 +124,6 @@ export default function ImagePage() {
         </header>
 
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-          {/* Hero */}
           <div className="text-center mb-8">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary-500 to-accent grid place-items-center mb-4 shadow-lg shadow-primary-500/30">
               <Sparkles className="w-7 h-7 text-white" />
@@ -222,11 +132,10 @@ export default function ImagePage() {
               Create <span className="gradient-text">stunning images</span>
             </h1>
             <p className="text-white/60">
-              Describe what you want to see — in any style. Powered by Flux.1.
+              Powered by Pollinations AI — completely free, no limits.
             </p>
           </div>
 
-          {/* Prompt card */}
           <div className="card mb-6">
             <textarea
               ref={textareaRef}
@@ -239,24 +148,6 @@ export default function ImagePage() {
               disabled={loading}
             />
 
-            {/* Model selector */}
-            <div className="mb-3">
-              <div className="text-xs text-white/50 mb-2">Model</div>
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value as Model)}
-                disabled={loading}
-                className="input w-full"
-              >
-                {MODELS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Style chips */}
             <div className="mb-3">
               <div className="text-xs text-white/50 mb-2">Style</div>
               <div className="flex flex-wrap gap-2">
@@ -271,14 +162,12 @@ export default function ImagePage() {
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    <span className="mr-1">{s.emoji}</span>
-                    {s.label}
+                    <span className="mr-1">{s.emoji}</span>{s.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Size chips */}
             <div className="mb-4">
               <div className="text-xs text-white/50 mb-2">Aspect ratio</div>
               <div className="flex flex-wrap gap-2">
@@ -293,8 +182,7 @@ export default function ImagePage() {
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    {sz.label}{' '}
-                    <span className="text-white/40 ml-1">{sz.aspect}</span>
+                    {sz.label} <span className="text-white/40 ml-1">{sz.aspect}</span>
                   </button>
                 ))}
               </div>
@@ -303,14 +191,10 @@ export default function ImagePage() {
             <div className="flex items-center justify-between gap-3">
               <div className="text-xs text-white/40 hidden sm:block">
                 Tip: press{' '}
-                <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border">
-                  ⌘
-                </kbd>{' '}
-                +{' '}
-                <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border">
-                  Enter
-                </kbd>{' '}
-                to generate.
+                <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border">⌘</kbd>
+                {' '}+{' '}
+                <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border">Enter</kbd>
+                {' '}to generate.
               </div>
               <button
                 onClick={generate}
@@ -318,19 +202,14 @@ export default function ImagePage() {
                 className="btn-primary"
               >
                 {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Generating…
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" /> Generate
-                  </>
+                  <><Sparkles className="w-4 h-4" /> Generate</>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Prompt ideas */}
           {items.length === 0 && !loading && (
             <div className="mb-8">
               <div className="text-xs text-white/50 mb-2">Need inspiration?</div>
@@ -338,7 +217,7 @@ export default function ImagePage() {
                 {PROMPT_IDEAS.map((idea, i) => (
                   <button
                     key={i}
-                    onClick={() => useIdea(idea)}
+                    onClick={() => { setPrompt(idea); textareaRef.current?.focus(); }}
                     className="px-3 py-1.5 rounded-full text-xs bg-surface border border-border text-white/70 hover:text-white hover:border-primary-500/50 transition max-w-md text-left truncate"
                     title={idea}
                   >
@@ -349,23 +228,15 @@ export default function ImagePage() {
             </div>
           )}
 
-          {/* Loading skeleton */}
           {loading && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               {[0, 1].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-xl overflow-hidden bg-surface border border-border aspect-square relative"
-                >
+                <div key={i} className="rounded-xl overflow-hidden bg-surface border border-border aspect-square relative">
                   <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/5 via-white/10 to-white/5" />
                   <div className="absolute inset-0 grid place-items-center">
                     <div className="flex flex-col items-center gap-2 text-white/50">
                       <Loader2 className="w-6 h-6 animate-spin" />
-                      <span className="text-xs">
-                        {i === 0
-                          ? 'Conjuring pixels…'
-                          : 'This can take up to 30s on first run'}
-                      </span>
+                      <span className="text-xs">{i === 0 ? 'Generating with Pollinations AI…' : 'This may take a few seconds'}</span>
                     </div>
                   </div>
                 </div>
@@ -373,11 +244,8 @@ export default function ImagePage() {
             </div>
           )}
 
-          {/* Gallery */}
           {items.length === 0 && !loading ? (
-            <p className="text-center text-white/40 py-8">
-              Your generated images will appear here.
-            </p>
+            <p className="text-center text-white/40 py-8">Your generated images will appear here.</p>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map((item) => (
@@ -390,45 +258,21 @@ export default function ImagePage() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={displayUrl(item.url)}
+                    src={item.url}
                     alt={item.prompt}
                     loading="lazy"
-                    onError={(e) => onImgError(e, item.url)}
                     className="w-full aspect-square object-cover group-hover:scale-105 transition duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
                   <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition">
-                    <p className="text-xs text-white/80 line-clamp-2 mb-1">
-                      {item.prompt}
-                    </p>
-                    <p className="text-[10px] text-primary-300/90 mb-1">
-                      Requested: {modelLabel(item.requestedModel)}
-                    </p>
-                    <p className="text-[10px] text-emerald-300/90 mb-2">
-                      Used: {modelLabel(item.effectiveModel || item.model)}
-                    </p>
+                    <p className="text-xs text-white/80 line-clamp-2 mb-1">{item.prompt}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-white/50">
-                        {formatDate(item.createdAt)}
-                      </span>
+                      <span className="text-[10px] text-white/50">{formatDate(item.createdAt)}</span>
                       <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyPrompt(item.prompt);
-                          }}
-                          className="btn-secondary text-xs py-1.5 px-2"
-                          title="Copy prompt"
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); copyPrompt(item.prompt); }} className="btn-secondary text-xs py-1.5 px-2">
                           <Copy className="w-3 h-3" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            download(item.url);
-                          }}
-                          className="btn-secondary text-xs py-1.5 px-3"
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); download(item.url); }} className="btn-secondary text-xs py-1.5 px-3">
                           <Download className="w-3 h-3" /> Save
                         </button>
                       </div>
@@ -440,7 +284,6 @@ export default function ImagePage() {
           )}
         </div>
 
-        {/* Lightbox */}
         <AnimatePresence>
           {lightbox && (
             <motion.div
@@ -450,11 +293,7 @@ export default function ImagePage() {
               className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 grid place-items-center p-4"
               onClick={() => setLightbox(null)}
             >
-              <button
-                onClick={() => setLightbox(null)}
-                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 grid place-items-center"
-                aria-label="Close"
-              >
+              <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 grid place-items-center">
                 <X className="w-5 h-5" />
               </button>
               <motion.div
@@ -465,32 +304,13 @@ export default function ImagePage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={displayUrl(lightbox.url)}
-                  alt={lightbox.prompt}
-                  onError={(e) => onImgError(e, lightbox.url)}
-                  className="max-h-[70vh] rounded-xl object-contain shadow-2xl"
-                />
-                <p className="text-sm text-white/80 max-w-2xl text-center">
-                  {lightbox.prompt}
-                </p>
-                <p className="text-xs text-primary-300/90">
-                  Requested: {modelLabel(lightbox.requestedModel)}
-                </p>
-                <p className="text-xs text-emerald-300/90">
-                  Used: {modelLabel(lightbox.effectiveModel || lightbox.model)}
-                </p>
+                <img src={lightbox.url} alt={lightbox.prompt} className="max-h-[70vh] rounded-xl object-contain shadow-2xl" />
+                <p className="text-sm text-white/80 max-w-2xl text-center">{lightbox.prompt}</p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => copyPrompt(lightbox.prompt)}
-                    className="btn-secondary text-xs"
-                  >
+                  <button onClick={() => copyPrompt(lightbox.prompt)} className="btn-secondary text-xs">
                     <Copy className="w-3 h-3" /> Copy prompt
                   </button>
-                  <button
-                    onClick={() => download(lightbox.url)}
-                    className="btn-primary text-xs"
-                  >
+                  <button onClick={() => download(lightbox.url)} className="btn-primary text-xs">
                     <Download className="w-3 h-3" /> Download
                   </button>
                 </div>

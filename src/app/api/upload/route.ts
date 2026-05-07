@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (hasSupabase()) {
       const supabase = getSupabase();
       const bucket =
-        process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'bucket ai';
+        process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'uploads';
       if (!supabase) {
         return NextResponse.json(
           { error: 'Storage is not configured correctly' },

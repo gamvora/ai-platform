@@ -65,7 +65,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-neutral-950 text-neutral-400">
+      <div className="flex items-center justify-center bg-neutral-950 text-neutral-400" style={{ height: '100dvh' }}>
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -80,7 +80,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100">
+    <div className="flex bg-neutral-950 text-neutral-100 overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-6 py-8">

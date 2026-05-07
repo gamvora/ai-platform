@@ -6,7 +6,19 @@ import { verifySession, AUTH_COOKIE } from '@/lib/auth';
  * Also synchronizes locale cookie (`locale=ar|en`) for dynamic bilingual UI.
  */
 
-const PROTECTED = ['/chat', '/image', '/video', '/dashboard'];
+const PROTECTED = [
+  '/chat',
+  '/image',
+  '/video',
+  '/edit',
+  '/face-swap',
+  '/outfit-swap',
+  '/upscale',
+  '/remove-bg',
+  '/sketch',
+  '/dashboard',
+  '/settings',
+];
 const AUTH_PAGES = ['/login', '/register'];
 const LOCALES = new Set(['ar', 'en']);
 

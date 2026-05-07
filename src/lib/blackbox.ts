@@ -471,6 +471,12 @@ export function friendlyBlackboxError(raw: string): string {
 
 /** Call the chat-completion endpoint. Throws Error on non-2xx. */
 export async function chatCompletion(opts: ChatCompletionOptions) {
+  if (!API_KEY) {
+    throw new Error(
+      'BLACKBOX_API_KEY is not configured. Set BLACKBOX_API_KEY in your environment variables.'
+    );
+  }
+
   const res = await fetch(`${API_URL}/chat/completions`, {
     method: 'POST',
     headers: {
