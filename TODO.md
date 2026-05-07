@@ -1,16 +1,10 @@
-# إصلاح شامل للموقع وربطه بقاعدة البيانات
+# Deployment TODO (GitHub + Vercel)
 
-## المرحلة 1: الفحص
-- [ ] مراجعة طبقة قاعدة البيانات والـ auth (supabase/auth/db)
-- [ ] مراجعة APIs الأساسية: auth/user/chat/conversations/upload/image
-- [ ] مراجعة صفحات الواجهة: login/register/settings/chat/image/dashboard
-
-## المرحلة 2: الإصلاح
-- [ ] إصلاح مشاكل الربط بقاعدة البيانات
-- [ ] إصلاح auth flow (register/login/me/logout)
-- [ ] إصلاح user settings/profile/password/avatar
-- [ ] إصلاح upload/image/chat/conversations
-
-## المرحلة 3: التحقق
-- [ ] اختبار Critical-path: register -> login -> settings -> image/upload -> chat/conversations
-- [ ] توثيق النتائج وتسليم نهائي
+- [ ] Check git status and current branch
+- [ ] Create/update branch (blackboxai/update-github-vercel) if needed
+- [ ] Commit and push latest project changes to GitHub
+- [ ] Check Vercel CLI availability
+- [ ] Link project to Vercel (if not linked)
+- [ ] Configure/verify required environment variables on Vercel
+- [ ] Trigger production deployment
+- [ ] Verify deployment URL and health
