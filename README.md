@@ -139,7 +139,24 @@ BLACKBOX_API_KEY=sk-P0gGry4ZHskwTEqzM7T6iA
 BLACKBOX_API_URL=https://api.blackbox.ai
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 RATE_LIMIT_PER_MINUTE=30
+
+# Required for image upload tools in production (Supabase Storage)
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+SUPABASE_STORAGE_BUCKET=uploads
 ```
+
+### Supabase Storage setup (required for uploads in production)
+
+Image upload endpoints (including avatar and image editing flows) require Supabase Storage in production.
+
+1. In Supabase Dashboard, create a Storage bucket named `uploads` (or set your own name in `SUPABASE_STORAGE_BUCKET`).
+2. Add server env vars:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_STORAGE_BUCKET`
+3. If you need direct public URLs, make the bucket public or configure proper storage policies.
+4. Restart the app after updating env vars.
 
 > ⚠️ **Production checklist**
 > - Change `JWT_SECRET` to a long random string (`openssl rand -base64 48`).

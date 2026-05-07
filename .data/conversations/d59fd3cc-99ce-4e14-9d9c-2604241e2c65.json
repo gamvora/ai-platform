@@ -241,5 +241,57 @@
     ],
     "createdAt": "2026-04-30T23:52:14.954Z",
     "updatedAt": "2026-04-30T23:52:33.021Z"
+  },
+  {
+    "id": "61032bd5-83ef-4ee1-a20f-0c230d1fad95",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "خطط لي رحلة 3 أيام إلى كيوتو",
+    "messages": [],
+    "createdAt": "2026-05-06T21:36:11.353Z",
+    "updatedAt": "2026-05-06T21:36:11.353Z"
+  },
+  {
+    "id": "e42089d3-88ca-4e78-99d6-4e5011cf6084",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "hla",
+    "messages": [],
+    "createdAt": "2026-05-06T21:37:00.396Z",
+    "updatedAt": "2026-05-06T21:37:00.396Z"
+  },
+  {
+    "id": "ddb1a65b-82d4-441d-b127-50e555d885e5",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "اعطني 5 أسماء إبداعية لعلامة قهوة",
+    "messages": [],
+    "createdAt": "2026-05-06T21:37:50.857Z",
+    "updatedAt": "2026-05-06T21:37:50.857Z"
+  },
+  {
+    "id": "e05f5eab-1d60-4256-8407-c8da6f9be7a0",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "la",
+    "messages": [],
+    "createdAt": "2026-05-06T21:41:55.776Z",
+    "updatedAt": "2026-05-06T21:41:55.776Z"
+  },
+  {
+    "id": "2aeeeb79-7b1c-4456-ad4f-3c7f8db6d2a1",
+    "userId": "d59fd3cc-99ce-4e14-9d9c-2604241e2c65",
+    "title": "اكتب دالة TypeScript لتقليل تكرار الأحدا…",
+    "messages": [
+      {
+        "role": "user",
+        "content": "اكتب دالة TypeScript لتقليل تكرار الأحداث (debounce)",
+        "images": [],
+        "createdAt": "2026-05-06T21:54:10.350Z"
+      },
+      {
+        "role": "assistant",
+        "content": "# دالة Debounce في TypeScript\n\n## التنفيذ الأساسي\n\n```typescript\nfunction debounce<T extends (...args: unknown[]) => unknown>(\n  fn: T,\n  delay: number\n): (...args: Parameters<T>) => void {\n  let timeoutId: ReturnType<typeof setTimeout> | null = null;\n\n  return function (...args: Parameters<T>): void {\n    // إلغاء المؤقت السابق إن وجد\n    if (timeoutId !== null) {\n      clearTimeout(timeoutId);\n    }\n\n    // إنشاء مؤقت جديد\n    timeoutId = setTimeout(() => {\n      fn(...args);\n      timeoutId = null;\n    }, delay);\n  };\n}\n```\n\n---\n\n## نسخة متقدمة مع خيارات إضافية\n\n```typescript\ninterface DebounceOptions {\n  leading?: boolean;  // تنفيذ فوري عند أول استدعاء\n  trailing?: boolean; // تنفيذ بعد انتهاء الانتظار (افتراضي)\n  maxWait?: number;   // أقصى وقت انتظار قبل التنفيذ الإجباري\n}\n\ninterface DebouncedFunction<T extends (...args: unknown[]) => unknown> {\n  (...args: Parameters<T>): ReturnType<T> | undefined;\n  cancel: () => void;   // إلغاء التنفيذ المعلق\n  flush: () => ReturnType<T> | undefined; // تنفيذ فوري\n  isPending: () => boolean; // هل يوجد تنفيذ معلق؟\n}\n\nfunction debounce<T extends (...args: unknown[]) => unknown>(\n  fn: T,\n  delay: number,\n  options: DebounceOptions = {}\n): DebouncedFunction<T> {\n  const { leading = false, trailing = true, maxWait } = options;\n\n  let timeoutId: ReturnType<typeof setTimeout> | null = null;\n  let maxTimeoutId: ReturnType<typeof setTimeout> | null = null;\n  let lastArgs: Parameters<T> | null = null;\n  let lastResult: ReturnType<T> | undefined;\n  let lastCallTime: number | null = null;\n\n  // تنفيذ الدالة الأصلية\n  const invoke = (): ReturnType<T> | undefined => {\n    if (lastArgs !== null) {\n      lastResult = fn(...lastArgs) as ReturnType<T>;\n      lastArgs = null;\n    }\n    return lastResult;\n  };\n\n  // تنظيف جميع المؤقتات\n  const clearTimers = (): void => {\n    if (timeoutId !== null) {\n      clearTimeout(timeoutId);\n      timeoutId = null;\n    }\n    if (maxTimeoutId !== null) {\n      clearTimeout(maxTimeoutId);\n      maxTimeoutId = null;\n    }\n  };\n\n  const debouncedFn = function (\n    ...args: Parameters<T>\n  ): ReturnType<T> | undefined {\n    lastArgs = args;\n    lastCallTime = Date.now();\n\n    const shouldCallLeading = leading && timeoutId === null;\n\n    // إعادة ضبط المؤقت الرئيسي\n    if (timeoutId !== null) clearTimeout(timeoutId);\n\n    timeoutId = setTimeout(() => {\n      timeoutId = null;\n      if (trailing && lastArgs !== null) {\n        invoke();\n      }\n      clearTimers();\n    }, delay);\n\n    // ضبط مؤقت maxWait\n    if (maxWait !== undefined && maxTimeoutId === null) {\n      maxTimeoutId = setTimeout(() => {\n        maxTimeoutId = null;\n        if (lastArgs !== null) invoke();\n      }, maxWait);\n    }\n\n    // تنفيذ فوري عند leading\n    if (shouldCallLeading) {\n      return invoke();\n    }\n\n    return lastResult;\n  };\n\n  // إلغاء التنفيذ المعلق\n  debouncedFn.cancel = (): void => {\n    clearTimers();\n    lastArgs = null;\n    lastCallTime = null;\n  };\n\n  // تنفيذ فوري\n  debouncedFn.flush = (): ReturnType<T> | undefined => {\n    clearTimers();\n    return invoke();\n  };\n\n  // التحقق من وجود تنفيذ معلق\n  debouncedFn.isPending = (): boolean => timeoutId !== null;\n\n  return debouncedFn;\n}\n```\n\n---\n\n## أمثلة الاستخدام\n\n```typescript\n// ✅ مثال 1: البحث الفوري\nconst handleSearch = debounce((query: string) => {\n  console.log(`🔍 جاري البحث عن: ${query}`);\n  // استدعاء API...\n}, 500);\n\n// سيتم تنفيذ البحث مرة واحدة فقط بعد 500ms\nhandleSearch(\"TypeScript\");\nhandleSearch(\"TypeScript d\");\nhandleSearch(\"TypeScript debounce\"); // ← هذا فقط سيُنفَّذ\n\n\n// ✅ مثال 2: حفظ تلقائي مع maxWait\nconst autoSave = debounce(\n  (content: string) => {\n    console.log(`💾 جاري الحفظ...`);\n  },\n  1000,\n  { maxWait: 5000 } // حفظ إجباري كل 5 ثوانٍ على الأقل\n);\n\n\n// ✅ مثال 3: تنفيذ فوري (leading)\nconst handleButtonClick = debounce(\n  () => console.log(\"🖱️ تم الضغط!\"),\n  300,\n  { leading: true, trailing: false }\n);\n\n\n// ✅ مثال 4: استخدام cancel و flush\nconst debouncedUpdate = debounce((value: number) => {\n  console.log(`📊 القيمة: ${value}`);\n}, 1000);\n\ndebouncedUpdate(42);\n\n// إلغاء التنفيذ\ndebouncedUpdate.cancel();\n\n// أو تنفيذ فوري\ndebouncedUpdate.flush();\n\n// التحقق من وجود تنفيذ معلق\nconsole.log(debouncedUpdate.isPending()); // false\n```\n\n---\n\n## مقارنة سريعة\n\n| الخيار | الوصف | متى تستخدمه؟ |\n|--------|-------|--------------|\n| `trailing` ✅ | ينفذ بعد انتهاء الانتظار | البحث، التحقق من النماذج |\n| `leading` | ينفذ فور الاستدعاء الأول | أزرار الإرسال، النقرات |\n| `maxWait` | حد أقصى للانتظار | الحفظ التلقائي |",
+        "createdAt": "2026-05-06T21:54:33.344Z"
+      }
+    ],
+    "createdAt": "2026-05-06T21:54:10.344Z",
+    "updatedAt": "2026-05-06T21:54:33.344Z"
   }
 ]

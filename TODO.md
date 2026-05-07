@@ -1,23 +1,16 @@
-# Image Page Loading + Model Label TODO
+# إصلاح شامل للموقع وربطه بقاعدة البيانات
 
-## Plan Summary
-تحسين تجربة صفحة الصور بحيث الصورة لا تظهر إلا بعد نجاح تحميلها فعليًا، مع بقاء loading واضح ومعالجة أخطاء أفضل، وإظهار اسم المودل المستخدم تحت كل صورة.
+## المرحلة 1: الفحص
+- [ ] مراجعة طبقة قاعدة البيانات والـ auth (supabase/auth/db)
+- [ ] مراجعة APIs الأساسية: auth/user/chat/conversations/upload/image
+- [ ] مراجعة صفحات الواجهة: login/register/settings/chat/image/dashboard
 
-## Steps
+## المرحلة 2: الإصلاح
+- [ ] إصلاح مشاكل الربط بقاعدة البيانات
+- [ ] إصلاح auth flow (register/login/me/logout)
+- [ ] إصلاح user settings/profile/password/avatar
+- [ ] إصلاح upload/image/chat/conversations
 
-### 1. [ ] Update `src/app/image/page.tsx` (preload flow)
-- Add client-side image preloading before inserting generated image into gallery
-- Keep `loading=true` until preload success/failure is resolved
-- Prevent broken/half-loaded images from being added
-
-### 2. [ ] Update `src/app/image/page.tsx` (error handling)
-- Improve error messages for API failure and image-load failure
-- Keep existing proxy/fallback behavior for rendering
-
-### 3. [ ] Update API + UI data shape for model label
-- Ensure model used is returned with each generated image item from API
-- Display model name under each image card and inside lightbox details
-
-### 4. [ ] Run focused verification
-- Verify generation loading behavior and model label rendering in `/image`
-- Validate error behavior when generation or image loading fails
+## المرحلة 3: التحقق
+- [ ] اختبار Critical-path: register -> login -> settings -> image/upload -> chat/conversations
+- [ ] توثيق النتائج وتسليم نهائي
