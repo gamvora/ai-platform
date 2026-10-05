@@ -22,23 +22,30 @@ interface ImageItem {
   model?: string;
 }
 
-type Style = 'none' | 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic';
-type Size = '1024x1024' | '1024x1792' | '1792x1024' | '768x768';
-
-const STYLES: { value: Style; label: string; emoji: string }[] = [
-  { value: 'none', label: 'Auto', emoji: '✨' },
-  { value: 'realistic', label: 'Realistic', emoji: '📸' },
-  { value: 'anime', label: 'Anime', emoji: '🎨' },
-  { value: '3d', label: '3D', emoji: '🎮' },
-  { value: 'fantasy', label: 'Fantasy', emoji: '🐉' },
-  { value: 'cinematic', label: 'Cinematic', emoji: '🎬' },
+// ── Model options from Puter ────────────────────────────────────────────────
+const MODELS = [
+  { value: 'openai/gpt-image-2', label: 'GPT Image 2', desc: 'OpenAI' },
+  { value: 'openai/gpt-image-2.5-flare', label: 'GPT Image 2.5 Flare', desc: 'OpenAI' },
+  { value: 'openai/gpt-image-2.5-sunburst', label: 'GPT Image 2.5 Sunburst', desc: 'OpenAI' },
+  { value: 'google/gemini-3.1-flash-image', label: 'Gemini 3.1 Flash Image', desc: 'Google' },
+  { value: 'google/gemini-3-pro-image', label: 'Gemini 3 Pro Image', desc: 'Google' },
+  { value: 'black-forest-labs/flux-2-pro', label: 'FLUX 2 Pro', desc: 'Black Forest' },
+  { value: 'black-forest-labs/flux-2-dev', label: 'FLUX 2 Dev', desc: 'Black Forest' },
+  { value: 'black-forest-labs/flux-schnell', label: 'FLUX Schnell', desc: 'Black Forest' },
+  { value: 'x-ai/grok-imagine-image-2.0', label: 'Grok Imagine 2.0', desc: 'xAI' },
+  { value: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL', desc: 'Stability' },
 ];
 
+const QUALITY_LEVELS = ['low', 'medium', 'high'];
+
+type Size = '512x512' | '768x768' | '1024x1024' | '1024x1792' | '1792x1024';
+
 const SIZES: { value: Size; label: string; aspect: string }[] = [
-  { value: '1024x1024', label: 'Square', aspect: '1:1' },
+  { value: '512x512', label: 'Small', aspect: '1:1' },
+  { value: '768x768', label: 'Medium', aspect: '1:1' },
+  { value: '1024x1024', label: 'Large', aspect: '1:1' },
   { value: '1024x1792', label: 'Portrait', aspect: '9:16' },
   { value: '1792x1024', label: 'Landscape', aspect: '16:9' },
-  { value: '768x768', label: 'Compact', aspect: '1:1' },
 ];
 
 const PROMPT_IDEAS = [
@@ -49,39 +56,92 @@ const PROMPT_IDEAS = [
   'An ancient library inside a giant tree, glowing books floating',
 ];
 
+// Load Puter.js dynamically
+async function loadPuter(): Promise<typeof import('@heyputer/puter.js') | null> {
+  try {
+    const mod = await import('@heyputer/puter.js');
+    return mod;
+  } catch {
+    // Fallback to CDN
+    if ((window as any).puter) return { default: (window as any).puter } as any;
+    return null;
+  }
+}
+
 export default function ImagePage() {
   const toast = useToast();
   const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState<Style>('none');
+  const [model, setModel] = useState(MODELS[0].value);
+  const [quality, setQuality] = useState('low');
   const [size, setSize] = useState<Size>('1024x1024');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ImageItem[]>([]);
   const [lightbox, setLightbox] = useState<ImageItem | null>(null);
+  const [puterLoaded, setPuterLoaded] = useState(false);
+  const [puterError, setPuterError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load history from localStorage
   useEffect(() => {
-    fetch('/api/image')
-      .then((r) => r.json())
-      .then((d) => setItems(d.images || []))
-      .catch(() => {});
+    try {
+      const saved = localStorage.getItem('nova_image_history');
+      if (saved) setItems(JSON.parse(saved));
+    } catch {}
+    loadPuter().then((mod) => {
+      if (mod) setPuterLoaded(true);
+      else setPuterError('Puter.js failed to load');
+    });
   }, []);
 
+  function saveHistory(newItems: ImageItem[]) {
+    try {
+      localStorage.setItem('nova_image_history', JSON.stringify(newItems.slice(0, 50)));
+    } catch {}
+  }
+
   async function generate() {
-    if (!prompt.trim()) { toast.info('Describe what you want to see'); return; }
+    if (!prompt.trim()) { toast.info('اكتب وصفاً للصورة التي تريدها'); return; }
+    if (!puterLoaded) { toast.error('خدمة توليد الصور غير متاحة. تأكد من اتصال الإنترنت.'); return; }
+
     setLoading(true);
     try {
-      const res = await fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), style, size }),
+      const mod = await loadPuter();
+      if (!mod) throw new Error('Puter not available');
+
+      const puter = mod.default || mod;
+      const [w, h] = size.split('x').map(Number);
+
+      const imgEl = await puter.ai.txt2img(prompt.trim(), {
+        model,
+        quality,
+        width: w,
+        height: h,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
-      setItems((prev) => [...(data.images || []), ...prev]);
+
+      const url = imgEl.src || imgEl.toString();
+      const newItem: ImageItem = {
+        id: crypto.randomUUID(),
+        prompt: prompt.trim(),
+        url,
+        createdAt: new Date().toISOString(),
+        model: model.split('/')[1] || model,
+      };
+
+      const updated = [newItem, ...items].slice(0, 50);
+      setItems(updated);
+      saveHistory(updated);
       setPrompt('');
-      toast.success('Image generated!');
+      toast.success('تم توليد الصورة بنجاح!');
     } catch (err: any) {
-      toast.error(err?.message || 'Image generation failed');
+      console.error('[image gen]', err);
+      const msg = err?.message || String(err);
+      if (msg.includes('insufficient') || msg.includes('402')) {
+        toast.error('يتطلب هذا النموذج رصيدًا. جرب نموذجًا آخر أو جودة أقل.');
+      } else if (msg.includes('moderation')) {
+        toast.error('تم رفض الطلب بسبب مرشح المحتوى. عدّل الوصف وحاول مجددًا.');
+      } else {
+        toast.error(msg || 'فشل توليد الصورة');
+      }
     } finally {
       setLoading(false);
     }
@@ -94,10 +154,10 @@ export default function ImagePage() {
     }
   }
 
-  function download(url: string) {
+  function download(url: string, filename?: string) {
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'nova-ai-' + Date.now() + '.png';
+    a.download = filename || `nova-ai-${Date.now()}.png`;
     a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);
@@ -107,8 +167,8 @@ export default function ImagePage() {
 
   function copyPrompt(text: string) {
     navigator.clipboard.writeText(text).then(
-      () => toast.success('Prompt copied'),
-      () => toast.error('Copy failed')
+      () => toast.success('تم نسخ الوصف'),
+      () => toast.error('فشل النسخ')
     );
   }
 
@@ -119,7 +179,7 @@ export default function ImagePage() {
         <header className="h-14 border-b border-border flex items-center px-4 md:px-6 glass sticky top-0 z-10">
           <div className="flex items-center gap-2 ml-10 md:ml-0">
             <ImageIcon className="w-4 h-4 text-primary-500" />
-            <span className="font-medium">Image Generation</span>
+            <span className="font-medium">توليد الصور</span>
           </div>
         </header>
 
@@ -129,11 +189,17 @@ export default function ImagePage() {
               <Sparkles className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              Create <span className="gradient-text">stunning images</span>
+              أنشئ <span className="gradient-text">صوراً مذهلة</span> بالذكاء الاصطناعي
             </h1>
             <p className="text-white/60">
-              Powered by Pollinations AI — completely free, no limits.
+              مدعوم بواسطة Puter.js — مجاني لكل مستخدم، بدون مفاتيح API
             </p>
+            {!puterLoaded && !puterError && (
+              <p className="text-xs text-amber-400 mt-2">جاري تحميل خدمة التوليد...</p>
+            )}
+            {puterError && (
+              <p className="text-xs text-red-400 mt-2">{puterError}</p>
+            )}
           </div>
 
           <div className="card mb-6">
@@ -141,35 +207,59 @@ export default function ImagePage() {
               ref={textareaRef}
               rows={3}
               className="input mb-4 resize-none"
-              placeholder="A cinematic shot of a lone astronaut on a neon-lit alien beach at sunset, ultra-detailed, 8k"
+              placeholder="اكتب وصفاً للصورة التي تريدها..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
-              disabled={loading}
+              disabled={loading || !puterLoaded}
             />
 
+            {/* Model selector */}
             <div className="mb-3">
-              <div className="text-xs text-white/50 mb-2">Style</div>
-              <div className="flex flex-wrap gap-2">
-                {STYLES.map((s) => (
+              <div className="text-xs text-white/50 mb-2">النموذج</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                {MODELS.map((m) => (
                   <button
-                    key={s.value}
-                    onClick={() => setStyle(s.value)}
+                    key={m.value}
+                    onClick={() => setModel(m.value)}
                     disabled={loading}
-                    className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                      style === s.value
+                    className={`px-2 py-1.5 rounded-lg text-xs border transition text-left ${
+                      model === m.value
                         ? 'bg-primary-500 border-primary-500 text-white'
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    <span className="mr-1">{s.emoji}</span>{s.label}
+                    <div className="font-medium truncate">{m.label}</div>
+                    <div className="text-[10px] opacity-60 truncate">{m.desc}</div>
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Quality selector */}
+            <div className="mb-3">
+              <div className="text-xs text-white/50 mb-2">الجودة</div>
+              <div className="flex gap-2">
+                {QUALITY_LEVELS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setQuality(q)}
+                    disabled={loading}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                      quality === q
+                        ? 'bg-primary-500 border-primary-500 text-white'
+                        : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
+                    }`}
+                  >
+                    {q.charAt(0).toUpperCase() + q.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Size selector */}
             <div className="mb-4">
-              <div className="text-xs text-white/50 mb-2">Aspect ratio</div>
+              <div className="text-xs text-white/50 mb-2">الحجم</div>
               <div className="flex flex-wrap gap-2">
                 {SIZES.map((sz) => (
                   <button
@@ -182,7 +272,7 @@ export default function ImagePage() {
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    {sz.label} <span className="text-white/40 ml-1">{sz.aspect}</span>
+                    {sz.label} <span className="text-white/40 mr-1">{sz.aspect}</span>
                   </button>
                 ))}
               </div>
@@ -198,11 +288,11 @@ export default function ImagePage() {
               </div>
               <button
                 onClick={generate}
-                disabled={loading || !prompt.trim()}
+                disabled={loading || !prompt.trim() || !puterLoaded}
                 className="btn-primary"
               >
                 {loading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
                 ) : (
                   <><Sparkles className="w-4 h-4" /> Generate</>
                 )}
@@ -236,7 +326,7 @@ export default function ImagePage() {
                   <div className="absolute inset-0 grid place-items-center">
                     <div className="flex flex-col items-center gap-2 text-white/50">
                       <Loader2 className="w-6 h-6 animate-spin" />
-                      <span className="text-xs">{i === 0 ? 'Generating with Pollinations AI…' : 'This may take a few seconds'}</span>
+                      <span className="text-xs">{i === 0 ? 'Generating with AI...' : 'This may take a few seconds'}</span>
                     </div>
                   </div>
                 </div>
