@@ -2,16 +2,92 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth-server';
 import { rateLimit } from '@/lib/rateLimit';
 import { addGeneration, listGenerations, newId } from '@/lib/db';
-import { persistRemoteImage } from '@/lib/blackbox';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 export const maxDuration = 120;
 export const runtime = 'nodejs';
 
-const IMAGE_BASE = 'https://image.pollinations.ai/prompt';
+const POLL_BASE = 'https://image.pollinations.ai/prompt';
+
+/** Retry generating an image URL — tries up to `maxAttempts` with different seeds. */
+async function tryPollinations(
+  prompt: string,
+  w: number,
+  h: number,
+  maxAttempts = 4
+): Promise<string | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const seed = Math.floor(Math.random() * 9_999_999);
+    const url = `${POLL_BASE}/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
+
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 60_000);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)' },
+      });
+      clearTimeout(t);
+
+      if (res.ok && res.status !== 402) {
+        // Verify we actually got an image, not HTML/error
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (ct.startsWith('image/') || ct.includes('octet-stream')) {
+          return url;
+        }
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length > 1024) return url; // decent-sized response = probably valid
+      }
+    } catch {
+      // continue to next attempt
+    }
+
+    if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 800));
+  }
+  return null;
+}
+
+/** Save a remote image URL to public/generated/<id>.<ext>. Returns local URL or null. */
+async function saveImage(remoteUrl: string, id: string): Promise<string | null> {
+  if (!remoteUrl) return null;
+  if (remoteUrl.startsWith('/')) return remoteUrl;
+  try {
+    const res = await fetch(remoteUrl, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)' },
+    });
+    if (!res.ok) return null;
+
+    const contentTypeRaw = (res.headers.get('content-type') || '').toLowerCase();
+    if (!contentTypeRaw.startsWith('image/') && !contentTypeRaw.includes('octet-stream')) return null;
+
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 512) return null;
+
+    let ext = 'jpg';
+    if (buf.length >= 8) {
+      const sig = buf.subarray(0, 12);
+      if (sig[0] === 0x89 && sig[1] === 0x50 && sig[2] === 0x4e && sig[3] === 0x47) ext = 'png';
+      else if (sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) ext = 'jpg';
+      else if (sig[0] === 0x47 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x38) ext = 'gif';
+      else if (sig[0] === 0x52 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x46 && sig[8] === 0x57 && sig[9] === 0x45 && sig[10] === 0x42 && sig[11] === 0x50) ext = 'webp';
+    }
+
+    const dir = path.join(process.cwd(), 'public', 'generated');
+    await fs.mkdir(dir, { recursive: true });
+    const filename = `${id}.${ext}`;
+    await fs.writeFile(path.join(dir, filename), buf);
+    return `/generated/${filename}`;
+  } catch (err: any) {
+    console.warn('[saveImage] failed:', err?.message);
+    return null;
+  }
+}
 
 /**
  * POST /api/image
- * Generates an image via Pollinations.ai (free, no API key).
+ * Generates an image via Pollinations.ai (free, no API key, no sign-in required).
+ * Retries automatically with different seeds on failure.
  * Body: { prompt, size?, style? }
  */
 export async function POST(req: NextRequest) {
@@ -34,37 +110,35 @@ export async function POST(req: NextRequest) {
     const [w, h] = size.split('x').map((n) => parseInt(n) || 1024);
 
     const styleSuffixes: Record<string, string> = {
-      realistic: ', hyperrealistic photography, 8k, dramatic lighting',
-      anime: ', anime style, studio ghibli, vibrant colors',
-      '3d': ', 3d render, octane render, volumetric lighting',
-      fantasy: ', fantasy concept art, epic, magical atmosphere',
-      cinematic: ', cinematic still, film grain, moody lighting',
+      realistic: ', hyperrealistic photography, 8k, dramatic lighting, professional',
+      anime: ', anime style, studio ghibli, vibrant colors, clean linework',
+      '3d': ', 3d render, octane render, volumetric lighting, pbr',
+      fantasy: ', fantasy concept art, epic, magical atmosphere, artstation trending',
+      cinematic: ', cinematic still, film grain, shallow depth of field, moody lighting',
     };
     const finalPrompt = prompt + (styleSuffixes[style] || '');
 
-    const seed = Math.floor(Math.random() * 1_000_000);
-    const params = new URLSearchParams({
-      width: String(w),
-      height: String(h),
-      seed: String(seed),
-      nologo: 'true',
-      model: 'flux',
-      enhance: 'true',
-    });
-    const pollUrl = `${IMAGE_BASE}/${encodeURIComponent(finalPrompt)}?${params}`;
+    // Try Pollinations with retries
+    const pollUrl = await tryPollinations(finalPrompt, w, h, 4);
+    if (!pollUrl) {
+      return NextResponse.json(
+        { error: 'خدمة توليد الصور غير متاحة مؤقتاً. حاول مرة أخرى.' },
+        { status: 503 }
+      );
+    }
 
     const id = newId();
-    const localUrl = await persistRemoteImage(pollUrl, id);
+    const localUrl = await saveImage(pollUrl, id);
 
     const now = new Date().toISOString();
-    const item: any = {
+    const item = {
       id,
       userId: user.id,
       type: 'image' as const,
       prompt,
-      url: localUrl,
+      url: localUrl || pollUrl,
       createdAt: now,
-      model: 'flux',
+      model: 'pollinations-free',
       provider: 'pollinations',
     };
     await addGeneration(item);
