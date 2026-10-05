@@ -10,7 +10,6 @@
     "db:setup": "node scripts/setup-supabase.mjs"
   },
   "dependencies": {
-    "@heyputer/puter.js": "^2.6.4",
     "@supabase/supabase-js": "^2.105.1",
     "bcryptjs": "^2.4.3",
     "framer-motion": "^11.3.2",

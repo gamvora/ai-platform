@@ -10,6 +10,9 @@ import {
   Sparkles,
   Copy,
   X,
+  Camera,
+  Zap,
+  Layers,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
@@ -22,24 +25,22 @@ interface ImageItem {
   model?: string;
 }
 
-type Style = 'none' | 'realistic' | 'anime' | '3d' | 'fantasy' | 'cinematic';
-type Size = '768x768' | '1024x1024' | '1024x1792' | '1792x1024' | '512x512';
-
-const STYLES: { value: Style; label: string; emoji: string }[] = [
-  { value: 'none', label: 'Auto', emoji: '✨' },
-  { value: 'realistic', label: 'Realistic', emoji: '📸' },
-  { value: 'anime', label: 'Anime', emoji: '🎨' },
-  { value: '3d', label: '3D', emoji: '🎮' },
-  { value: 'fantasy', label: 'Fantasy', emoji: '🐉' },
-  { value: 'cinematic', label: 'Cinematic', emoji: '🎬' },
+// ── Models (Puter.js compatible IDs → Pollinations params) ────────────────
+const MODELS = [
+  { id: 'flux',           label: 'FLUX',         desc: 'High quality, best detail' },
+  { id: 'flux-realism',   label: 'FLUX Realism', desc: 'Photorealistic' },
+  { id: 'flux-anime',     label: 'FLUX Anime',   desc: 'Anime / illustration' },
+  { id: 'flux-3d',        label: 'FLUX 3D',      desc: '3D render style' },
+  { id: 'flux-cinematic', label: 'FLUX Cinematic',desc: 'Film still look' },
+  { id: 'turbo',          label: 'Turbo',        desc: 'Fastest generation' },
 ];
 
-const SIZES: { value: Size; label: string; aspect: string }[] = [
-  { value: '512x512', label: 'Small', aspect: '1:1' },
-  { value: '768x768', label: 'Medium', aspect: '1:1' },
-  { value: '1024x1024', label: 'Large', aspect: '1:1' },
-  { value: '1024x1792', label: 'Portrait', aspect: '9:16' },
-  { value: '1792x1024', label: 'Landscape', aspect: '16:9' },
+const SIZES: { value: string; label: string; aspect: string; w: number; h: number }[] = [
+  { value: '512x512', label: 'Small', aspect: '1:1', w: 512, h: 512 },
+  { value: '768x768', label: 'Medium', aspect: '1:1', w: 768, h: 768 },
+  { value: '1024x1024', label: 'Large', aspect: '1:1', w: 1024, h: 1024 },
+  { value: '1024x1792', label: 'Portrait', aspect: '9:16', w: 1024, h: 1792 },
+  { value: '1792x1024', label: 'Landscape', aspect: '16:9', w: 1792, h: 1024 },
 ];
 
 const PROMPT_IDEAS = [
@@ -56,14 +57,14 @@ const PROMPT_IDEAS = [
 export default function ImagePage() {
   const toast = useToast();
   const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState<Style>('none');
-  const [size, setSize] = useState<Size>('1024x1024');
+  const [model, setModel] = useState(MODELS[0].id);
+  const [size, setSize] = useState(SIZES[2]); // default 1024x1024
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ImageItem[]>([]);
   const [lightbox, setLightbox] = useState<ImageItem | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load saved history from localStorage (no backend needed)
+  // Load history
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nova_image_history');
@@ -80,22 +81,48 @@ export default function ImagePage() {
   async function generate() {
     if (!prompt.trim()) { toast.info('اكتب وصفاً للصورة التي تريدها'); return; }
     setLoading(true);
+
     try {
-      const res = await fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), style, size }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
-      const newItem = data.images?.[0];
-      if (newItem) {
-        setItems((prev) => [newItem, ...prev].slice(0, 30));
-        saveHistory([...(data.images || []), ...items].slice(0, 30));
+      const seed = Math.floor(Math.random() * 9_999_999);
+      // Build Pollinations URL — no API key, no sign-in needed
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?width=${size.w}&height=${size.h}&seed=${seed}&model=${model}&nologo=true`;
+
+      // Show loading preview immediately
+      const tempId = crypto.randomUUID();
+      setItems(prev => [{
+        id: tempId,
+        prompt: prompt.trim(),
+        url: pollUrl,
+        createdAt: new Date().toISOString(),
+        model,
+      }, ...prev]);
+
+      // Fetch to verify image is valid
+      const res = await fetch(pollUrl, { signal: AbortSignal.timeout(90_000) });
+      if (!res.ok || !res.body) {
+        throw new Error('فشل توليد الصورة');
       }
+
+      // Convert to blob and get object URL for reliable display
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      // Replace temp item with real one
+      setItems(prev => prev.map(item =>
+        item.id === tempId ? { ...item, id: crypto.randomUUID(), url: objectUrl } : item
+      ));
+      saveHistory([{
+        id: crypto.randomUUID(),
+        prompt: prompt.trim(),
+        url: objectUrl,
+        createdAt: new Date().toISOString(),
+        model,
+      }, ...items].slice(0, 30));
+
       setPrompt('');
       toast.success('تم توليد الصورة بنجاح!');
     } catch (err: any) {
+      console.error('[image gen]', err);
       toast.error(err?.message || 'فشل توليد الصورة. حاول مرة أخرى.');
     } finally {
       setLoading(false);
@@ -109,12 +136,12 @@ export default function ImagePage() {
     }
   }
 
-  function download(url: string) {
+  function download(url: string, filename?: string) {
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'nova-ai-' + Date.now() + '.png';
+    a.download = filename || `nova-ai-${Date.now()}.png`;
     a.target = '_blank';
-    a.rel = 'noopener';
+    a.rel = 'noopener noreferrer';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -144,10 +171,10 @@ export default function ImagePage() {
               <Sparkles className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              أنشئ <span className="gradient-text">صوراََ مذهلة</span> بالذكاء الاصطناعي
+              أنشئ <span className="gradient-text">صوراً مذهلة</span> بالذكاء الاصطناعي
             </h1>
             <p className="text-white/60">
-              مجاني تماماً — لا يحتاج تسجيل دخول ولا مفاتيح API
+              مجاني بالكامل — لا يحتاج تسجيل دخول ولا مفاتيح API
             </p>
           </div>
 
@@ -156,29 +183,32 @@ export default function ImagePage() {
               ref={textareaRef}
               rows={3}
               className="input mb-4 resize-none"
-              placeholder="اكتب وصفاََ للصورة التي تريدها..."
+              placeholder="اكتب وصفاً للصورة التي تريدها..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
               disabled={loading}
             />
 
-            {/* Style selector */}
+            {/* Model selector */}
             <div className="mb-3">
-              <div className="text-xs text-white/50 mb-2">الأسلوب</div>
-              <div className="flex flex-wrap gap-2">
-                {STYLES.map((s) => (
+              <div className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                <Zap className="w-3 h-3" /> النموذج
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                {MODELS.map((m) => (
                   <button
-                    key={s.value}
-                    onClick={() => setStyle(s.value)}
+                    key={m.id}
+                    onClick={() => setModel(m.id)}
                     disabled={loading}
-                    className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                      style === s.value
-                        ? 'bg-primary-500 border-primary-500 text-white'
+                    className={`px-2 py-2 rounded-xl text-xs border transition text-left ${
+                      model === m.id
+                        ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20'
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    <span className="mr-1">{s.emoji}</span>{s.label}
+                    <div className="font-semibold truncate">{m.label}</div>
+                    <div className="text-[10px] opacity-60 mt-0.5 truncate">{m.desc}</div>
                   </button>
                 ))}
               </div>
@@ -186,20 +216,22 @@ export default function ImagePage() {
 
             {/* Size selector */}
             <div className="mb-4">
-              <div className="text-xs text-white/50 mb-2">الحجم</div>
+              <div className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                <Camera className="w-3 h-3" /> الحجم
+              </div>
               <div className="flex flex-wrap gap-2">
                 {SIZES.map((sz) => (
                   <button
                     key={sz.value}
-                    onClick={() => setSize(sz.value)}
+                    onClick={() => setSize(sz)}
                     disabled={loading}
                     className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                      size === sz.value
+                      size.value === sz.value
                         ? 'bg-primary-500 border-primary-500 text-white'
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    {sz.label} <span className="text-white/40 ml-1">{sz.aspect}</span>
+                    {sz.label} <span className="text-white/40 mr-1">{sz.aspect}</span>
                   </button>
                 ))}
               </div>
@@ -229,7 +261,9 @@ export default function ImagePage() {
 
           {items.length === 0 && !loading && (
             <div className="mb-8">
-              <div className="text-xs text-white/50 mb-2">Need inspiration?</div>
+              <div className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                <Layers className="w-3 h-3" /> أفكار للوصف
+              </div>
               <div className="flex flex-wrap gap-2">
                 {PROMPT_IDEAS.map((idea, i) => (
                   <button
@@ -253,7 +287,7 @@ export default function ImagePage() {
                   <div className="absolute inset-0 grid place-items-center">
                     <div className="flex flex-col items-center gap-2 text-white/50">
                       <Loader2 className="w-6 h-6 animate-spin" />
-                      <span className="text-xs">{i === 0 ? 'Generating image...' : 'This may take a few seconds'}</span>
+                      <span className="text-xs">{i === 0 ? 'جاري التوليد...' : 'قد يستغرق بضع ثوانٍ'}</span>
                     </div>
                   </div>
                 </div>
