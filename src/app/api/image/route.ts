@@ -10,92 +10,82 @@ export const runtime = 'nodejs';
 
 const POLL_BASE = 'https://image.pollinations.ai/prompt';
 
-/** Retry generating an image URL — tries up to `maxAttempts` with different seeds. */
-async function tryPollinations(
+/** Try to fetch an image from Pollinations, retrying on 402/upstream errors. */
+async function generateImageURL(
   prompt: string,
   w: number,
   h: number,
-  maxAttempts = 4
-): Promise<string | null> {
+  maxAttempts = 5
+): Promise<{ url: string; localUrl: string | null }> {
+  let lastError = '';
   for (let i = 0; i < maxAttempts; i++) {
     const seed = Math.floor(Math.random() * 9_999_999);
-    const url = `${POLL_BASE}/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
+    const rawUrl = `${POLL_BASE}/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
 
     try {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 60_000);
-      const res = await fetch(url, {
+      const res = await fetch(rawUrl, {
         signal: controller.signal,
         headers: { 'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)' },
       });
       clearTimeout(t);
 
-      if (res.ok && res.status !== 402) {
-        // Verify we actually got an image, not HTML/error
+      if (res.ok) {
         const ct = (res.headers.get('content-type') || '').toLowerCase();
-        if (ct.startsWith('image/') || ct.includes('octet-stream')) {
-          return url;
-        }
+        const isImage = ct.startsWith('image/') || ct.includes('octet-stream');
         const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length > 1024) return url; // decent-sized response = probably valid
+        if ((isImage || buf.length > 5000) && buf.length < 10_000_000) {
+          return { url: rawUrl, localUrl: null };
+        }
       }
-    } catch {
-      // continue to next attempt
+    } catch (err: any) {
+      lastError = err?.message || 'unknown';
     }
 
-    if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 800));
+    if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 600 + i * 200));
   }
-  return null;
+  throw new Error(lastError || 'خدمة توليد الصور غير متاحة مؤقتاً');
 }
 
-/** Save a remote image URL to public/generated/<id>.<ext>. Returns local URL or null. */
-async function saveImage(remoteUrl: string, id: string): Promise<string | null> {
-  if (!remoteUrl) return null;
-  if (remoteUrl.startsWith('/')) return remoteUrl;
-  try {
-    const res = await fetch(remoteUrl, {
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)' },
-    });
-    if (!res.ok) return null;
+/** Save a remote image to public/generated/<id>.<ext>. */
+async function saveGeneratedImage(remoteUrl: string, id: string): Promise<string> {
+  const res = await fetch(remoteUrl, {
+    headers: { 'user-agent': 'Mozilla/5.0 (compatible; NovaAI/1.0)' },
+  });
+  if (!res.ok) throw new Error('Failed to download generated image');
 
-    const contentTypeRaw = (res.headers.get('content-type') || '').toLowerCase();
-    if (!contentTypeRaw.startsWith('image/') && !contentTypeRaw.includes('octet-stream')) return null;
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 500) throw new Error('Invalid image data');
 
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 512) return null;
-
-    let ext = 'jpg';
-    if (buf.length >= 8) {
-      const sig = buf.subarray(0, 12);
-      if (sig[0] === 0x89 && sig[1] === 0x50 && sig[2] === 0x4e && sig[3] === 0x47) ext = 'png';
-      else if (sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) ext = 'jpg';
-      else if (sig[0] === 0x47 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x38) ext = 'gif';
-      else if (sig[0] === 0x52 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x46 && sig[8] === 0x57 && sig[9] === 0x45 && sig[10] === 0x42 && sig[11] === 0x50) ext = 'webp';
-    }
-
-    const dir = path.join(process.cwd(), 'public', 'generated');
-    await fs.mkdir(dir, { recursive: true });
-    const filename = `${id}.${ext}`;
-    await fs.writeFile(path.join(dir, filename), buf);
-    return `/generated/${filename}`;
-  } catch (err: any) {
-    console.warn('[saveImage] failed:', err?.message);
-    return null;
+  let ext = 'jpg';
+  if (buf.length >= 8) {
+    const sig = buf.subarray(0, 12);
+    if (sig[0] === 0x89 && sig[1] === 0x50 && sig[2] === 0x4e && sig[3] === 0x47) ext = 'png';
+    else if (sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) ext = 'jpg';
+    else if (sig[0] === 0x47 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x38) ext = 'gif';
+    else if (sig[0] === 0x52 && sig[1] === 0x49 && sig[2] === 0x46 && sig[3] === 0x46 && sig[8] === 0x57 && sig[9] === 0x45 && sig[10] === 0x42 && sig[11] === 0x50) ext = 'webp';
   }
+
+  const dir = path.join(process.cwd(), 'public', 'generated');
+  await fs.mkdir(dir, { recursive: true });
+  const filename = `${id}.${ext}`;
+  await fs.writeFile(path.join(dir, filename), buf);
+  return `/generated/${filename}`;
 }
 
 /**
  * POST /api/image
- * Generates an image via Pollinations.ai (free, no API key, no sign-in required).
- * Retries automatically with different seeds on failure.
+ * Generates an image via Pollinations.ai with automatic retries.
  * Body: { prompt, size?, style? }
  */
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const rl = rateLimit(`image:${user.id}`, 10);
-  if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded.' }, { status: 429 });
+  const rl = rateLimit(`image:${user.id}`, 5);
+  if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded. Please wait a moment.' }, { status: 429 });
 
   try {
     const body = await req.json();
@@ -107,7 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required.' }, { status: 400 });
     }
 
-    const [w, h] = size.split('x').map((n) => parseInt(n) || 1024);
+    const [w, h] = size.split('x').map((n) => parseInt(n, 10) || 1024);
 
     const styleSuffixes: Record<string, string> = {
       realistic: ', hyperrealistic photography, 8k, dramatic lighting, professional',
@@ -118,37 +108,38 @@ export async function POST(req: NextRequest) {
     };
     const finalPrompt = prompt + (styleSuffixes[style] || '');
 
-    // Try Pollinations with retries
-    const pollUrl = await tryPollinations(finalPrompt, w, h, 4);
-    if (!pollUrl) {
-      return NextResponse.json(
-        { error: 'خدمة توليد الصور غير متاحة مؤقتاً. حاول مرة أخرى.' },
-        { status: 503 }
-      );
-    }
+    // Generate image with retries
+    const { url: image_url, localUrl } = await generateImageURL(finalPrompt, w, h, 5);
+    const savedUrl = localUrl || image_url;
 
     const id = newId();
-    const localUrl = await saveImage(pollUrl, id);
-
     const now = new Date().toISOString();
-    const item = {
+
+    // Save to DB
+    await addGeneration({
       id,
       userId: user.id,
-      type: 'image' as const,
+      type: 'image',
       prompt,
-      url: localUrl || pollUrl,
+      url: savedUrl,
       createdAt: now,
-      model: 'pollinations-free',
-      provider: 'pollinations',
-    };
-    await addGeneration(item);
+    });
 
     return NextResponse.json({
-      images: [{ id: item.id, prompt: item.prompt, url: item.url, createdAt: item.createdAt, model: item.model }],
+      images: [{
+        id,
+        prompt,
+        url: savedUrl,
+        createdAt: now,
+        model: 'pollinations-free',
+      }],
     });
   } catch (err: any) {
-    console.error('[image]', err);
-    return NextResponse.json({ error: err?.message || 'Image generation failed.' }, { status: 500 });
+    console.error('[image]', err?.message);
+    return NextResponse.json(
+      { error: err?.message || 'فشل توليد الصورة. حاول مرة أخرى بعد لحظة.' },
+      { status: 503 }
+    );
   }
 }
 

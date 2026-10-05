@@ -39,6 +39,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* Puter.js — free image generation (user-signup only when needed) */}
+        <script src="https://js.puter.com/v2/" defer />
       </head>
       <body className="bg-ambient" style={{ minHeight: '100dvh' }}>
         <ToastProvider>{children}</ToastProvider>

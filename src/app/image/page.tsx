@@ -13,6 +13,8 @@ import {
   Camera,
   Zap,
   Layers,
+  Globe,
+  AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
@@ -25,14 +27,26 @@ interface ImageItem {
   model?: string;
 }
 
-// ── Models (Puter.js compatible IDs → Pollinations params) ────────────────
+// ── Puter.js model catalog (full API with all quality/settings) ───────────────
 const MODELS = [
-  { id: 'flux',           label: 'FLUX',         desc: 'High quality, best detail' },
-  { id: 'flux-realism',   label: 'FLUX Realism', desc: 'Photorealistic' },
-  { id: 'flux-anime',     label: 'FLUX Anime',   desc: 'Anime / illustration' },
-  { id: 'flux-3d',        label: 'FLUX 3D',      desc: '3D render style' },
-  { id: 'flux-cinematic', label: 'FLUX Cinematic',desc: 'Film still look' },
-  { id: 'turbo',          label: 'Turbo',        desc: 'Fastest generation' },
+  { id: 'openai/gpt-image-2',        label: 'GPT Image 2',       desc: 'OpenAI' },
+  { id: 'openai/gpt-image-2.5-flare',    label: 'GPT Image 2.5 Flare',  desc: 'OpenAI' },
+  { id: 'openai/gpt-image-2.5-sunburst', label: 'GPT Image 2.5 Sunburst', desc: 'OpenAI' },
+  { id: 'google/gemini-3.1-flash-image', label: 'Gemini 3.1 Flash Image', desc: 'Google' },
+  { id: 'google/gemini-3-pro-image',     label: 'Gemini 3 Pro Image',    desc: 'Google' },
+  { id: 'black-forest-labs/flux-2-pro',  label: 'FLUX 2 Pro',           desc: 'Black Forest' },
+  { id: 'black-forest-labs/flux-2-dev',  label: 'FLUX 2 Dev',           desc: 'Black Forest' },
+  { id: 'black-forest-labs/flux-schnell',label: 'FLUX Schnell',         desc: 'Black Forest' },
+  { id: 'x-ai/grok-imagine-image-2.0',   label: 'Grok Imagine 2.0',     desc: 'xAI' },
+  { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL', desc: 'Stability' },
+];
+
+const QUALITY_LEVELS: { value: string; label: string; models: string[] }[] = [
+  { value: 'low',     label: 'Low',   models: ['openai/gpt-image-2', 'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst'] },
+  { value: 'medium',  label: 'Medium',models: ['openai/gpt-image-2', 'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst'] },
+  { value: 'high',    label: 'High',  models: ['openai/gpt-image-2', 'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst'] },
+  { value: 'xhigh',   label: 'XHigh', models: ['openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst'] },
+  { value: 'max',     label: 'Max',   models: ['openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst'] },
 ];
 
 const SIZES: { value: string; label: string; aspect: string; w: number; h: number }[] = [
@@ -58,13 +72,33 @@ export default function ImagePage() {
   const toast = useToast();
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState(MODELS[0].id);
-  const [size, setSize] = useState(SIZES[2]); // default 1024x1024
+  const [quality, setQuality] = useState('low');
+  const [size, setSize] = useState(SIZES[2]); // 1024x1024 default
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ImageItem[]>([]);
   const [lightbox, setLightbox] = useState<ImageItem | null>(null);
+  const [puterReady, setPuterReady] = useState(false);
+  const [puterError, setPuterError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load history
+  // Check if Puter.js loaded
+  useEffect(() => {
+    const checkPuter = () => {
+      const p = (window as any).puter;
+      if (p) {
+        setPuterReady(true);
+      } else {
+        setTimeout(checkPuter, 500);
+      }
+    };
+    checkPuter();
+    // Timeout fallback
+    setTimeout(() => {
+      if (!puterReady) setPuterError('فشل تحميل مكتبة توليد الصور. تأكد من اتصال الإنترنت.');
+    }, 8000);
+  }, [puterReady]);
+
+  // Load history from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nova_image_history');
@@ -80,50 +114,56 @@ export default function ImagePage() {
 
   async function generate() {
     if (!prompt.trim()) { toast.info('اكتب وصفاً للصورة التي تريدها'); return; }
+    if (!puterReady) {
+      toast.error('خدمة توليد الصور لم تتجه بعد. انتظر لحظة...');
+      return;
+    }
+
     setLoading(true);
-
     try {
-      const seed = Math.floor(Math.random() * 9_999_999);
-      // Build Pollinations URL — no API key, no sign-in needed
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?width=${size.w}&height=${size.h}&seed=${seed}&model=${model}&nologo=true`;
+      const puter = (window as any).puter;
+      const [w, h] = size.value.split('x').map(Number);
 
-      // Show loading preview immediately
-      const tempId = crypto.randomUUID();
-      setItems(prev => [{
-        id: tempId,
-        prompt: prompt.trim(),
-        url: pollUrl,
-        createdAt: new Date().toISOString(),
-        model,
-      }, ...prev]);
-
-      // Fetch to verify image is valid
-      const res = await fetch(pollUrl, { signal: AbortSignal.timeout(90_000) });
-      if (!res.ok || !res.body) {
-        throw new Error('فشل توليد الصورة');
+      // Build options object
+      const options: Record<string, any> = {
+        model: model,
+        width: w,
+        height: h,
+      };
+      if (QUALITY_LEVELS.find(q => q.models.includes(model)) && QUALITY_LEVELS.find(q => q.models.includes(model))!.value === quality) {
+        options.quality = quality;
       }
 
-      // Convert to blob and get object URL for reliable display
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      // Generate
+      const imgEl = await puter.ai.txt2img(prompt.trim(), options);
+      const imageUrl = imgEl.src || imgEl.toString();
 
-      // Replace temp item with real one
-      setItems(prev => prev.map(item =>
-        item.id === tempId ? { ...item, id: crypto.randomUUID(), url: objectUrl } : item
-      ));
-      saveHistory([{
+      const newItem: ImageItem = {
         id: crypto.randomUUID(),
         prompt: prompt.trim(),
-        url: objectUrl,
+        url: imageUrl,
         createdAt: new Date().toISOString(),
-        model,
-      }, ...items].slice(0, 30));
+        model: model.split('/').pop() || model,
+      };
 
+      const updated = [newItem, ...items].slice(0, 30);
+      setItems(updated);
+      saveHistory(updated);
       setPrompt('');
       toast.success('تم توليد الصورة بنجاح!');
     } catch (err: any) {
       console.error('[image gen]', err);
-      toast.error(err?.message || 'فشل توليد الصورة. حاول مرة أخرى.');
+      const msg = err?.message || String(err);
+      if (msg.includes('insufficient') || msg.includes('402')) {
+        toast.error('يحتاج هذا النموذج إلى رصيد Puter. سجّل دخولك في puter.com مجانًا أو استخدم نموذجًا آخر.');
+      } else if (msg.includes('moderation') || msg.includes('bad_request')) {
+        toast.error('تم رفض الطلب بسبب مرشح المحتوى. عدّل الوصف وحاول مجددًا.');
+      } else if (msg.includes('authentication') || msg.includes('sign') || msg.includes('login')) {
+        toast.info('تحتاج حساب Puter مجاني لتوليد الصور. سيتم فتح نافذة التسجيل الآن.');
+        try { (window as any).puter.auth.signIn(); } catch {}
+      } else {
+        toast.error(msg || 'فشل توليد الصورة. حاول مرة أخرى.');
+      }
     } finally {
       setLoading(false);
     }
@@ -154,6 +194,9 @@ export default function ImagePage() {
     );
   }
 
+  // Determine which quality levels are available for current model
+  const availableQualities = QUALITY_LEVELS.filter(q => q.models.includes(model));
+
   return (
     <div className="flex overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
@@ -171,11 +214,23 @@ export default function ImagePage() {
               <Sparkles className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              أنشئ <span className="gradient-text">صوراً مذهلة</span> بالذكاء الاصطناعي
+              أنشئ <span className="gradient-text">صورًا مذهلة</span> بالذكاء الاصطناعي
             </h1>
             <p className="text-white/60">
-              مجاني بالكامل — لا يحتاج تسجيل دخول ولا مفاتيح API
+              مدعوم بـ{' '}
+              <span className="text-accent font-semibold">Puter.js</span>
+              {' '}— 10+ نماذجincluding GPT Image 2.5, Gemini, FLUX, Grok
             </p>
+            {!puterReady && !puterError && (
+              <p className="text-xs text-amber-400 mt-2 flex items-center justify-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> جاري تحميل خدمة التوليد...
+              </p>
+            )}
+            {puterError && (
+              <p className="text-xs text-red-400 mt-2 flex items-center justify-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {puterError}
+              </p>
+            )}
           </div>
 
           <div className="card mb-6">
@@ -183,11 +238,11 @@ export default function ImagePage() {
               ref={textareaRef}
               rows={3}
               className="input mb-4 resize-none"
-              placeholder="اكتب وصفاً للصورة التي تريدها..."
+              placeholder="اكتب وصفًا للصورة التي تريدها..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
-              disabled={loading}
+              disabled={loading || !puterReady}
             />
 
             {/* Model selector */}
@@ -195,11 +250,11 @@ export default function ImagePage() {
               <div className="text-xs text-white/50 mb-2 flex items-center gap-1">
                 <Zap className="w-3 h-3" /> النموذج
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                 {MODELS.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => setModel(m.id)}
+                    onClick={() => { setModel(m.id); setQuality('low'); }}
                     disabled={loading}
                     className={`px-2 py-2 rounded-xl text-xs border transition text-left ${
                       model === m.id
@@ -213,6 +268,31 @@ export default function ImagePage() {
                 ))}
               </div>
             </div>
+
+            {/* Quality selector */}
+            {availableQualities.length > 0 && (
+              <div className="mb-3">
+                <div className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                  <Globe className="w-3 h-3" /> الجودة
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableQualities.map((q) => (
+                    <button
+                      key={q.value}
+                      onClick={() => setQuality(q.value)}
+                      disabled={loading}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                        quality === q.value
+                          ? 'bg-primary-500 border-primary-500 text-white'
+                          : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
+                      }`}
+                    >
+                      {q.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Size selector */}
             <div className="mb-4">
@@ -231,7 +311,7 @@ export default function ImagePage() {
                         : 'bg-surface border-border text-white/70 hover:text-white hover:border-primary-500/50'
                     }`}
                   >
-                    {sz.label} <span className="text-white/40 mr-1">{sz.aspect}</span>
+                    {sz.label} <span className="text-white/40 ml-1">{sz.aspect}</span>
                   </button>
                 ))}
               </div>
@@ -247,7 +327,7 @@ export default function ImagePage() {
               </div>
               <button
                 onClick={generate}
-                disabled={loading || !prompt.trim()}
+                disabled={loading || !prompt.trim() || !puterReady}
                 className="btn-primary"
               >
                 {loading ? (
