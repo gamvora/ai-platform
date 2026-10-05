@@ -81,10 +81,10 @@ export async function POST(req: NextRequest) {
     };
     conversation.messages.push(userMsg);
 
-    // Build Blackbox API messages — include image content when present.
+    // Build API messages — include image content when present.
     // Resolve local /uploads/* paths to base64 data URIs so the external
     // vision model can actually "see" the user-uploaded images (it cannot
-    // reach localhost). Absolute https:// URLs are passed through.
+    // reach localhost). Absolute https:// URLs are fetched and inlined.
     const protoHeader = req.headers.get('x-forwarded-proto') || 'http';
     const hostHeader = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
     const publicHost = hostHeader ? `${protoHeader}://${hostHeader}` : '';
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       )),
     ];
 
-    // Call Blackbox API
+    // Call Bynara API
     let assistantContent: string;
     try {
       const res = await chatCompletion({
@@ -131,24 +131,24 @@ export async function POST(req: NextRequest) {
       const data = await res.json();
       assistantContent =
         data?.choices?.[0]?.message?.content?.toString() ??
-        'Sorry, I got no response.';
+        'عذراً، لم أحصل على رد.';
     } catch (err: any) {
-      console.error('[chat] Blackbox API error:', err?.message);
+      console.error('[chat] Bynara API error:', err?.message);
       const hasImages = Array.isArray(images) && images.length > 0;
       const raw = String(err?.message || '');
       const normalized = raw.toLowerCase();
 
-      const friendly = normalized.includes('blackbox_api_key is not configured')
-        ? 'AI service is not configured on the server. Please set BLACKBOX_API_KEY.'
-        : normalized.includes('cannot access application')
-          ? 'AI provider رفض الطلب: المفتاح لا يملك صلاحية على الموديل الحالي.'
-          : normalized.includes('exhausted balance') || normalized.includes('locked')
-            ? 'AI provider is out of credits at the moment. Please try again later.'
+      const friendly = normalized.includes('bynara_api_key is not configured') || normalized.includes('bynara_api_key')
+        ? 'خدمة الذكاء الاصطناعي غير مهيأة. يرجى تعيين BYNARA_API_KEY في الخادم.'
+        : normalized.includes('invalid.?api.?key') || normalized.includes('unauthorized')
+          ? 'مفتاح API غير صالح. تواصل مع مدير النظام.'
+          : normalized.includes('insufficient_quota') || normalized.includes('balance')
+            ? 'نفاذ رصيد الذكاء الاصطناعي. يرجى إضافة رصيد والمحاولة مرة أخرى.'
             : normalized.includes('429')
-              ? 'AI provider is rate-limited right now. Please retry in a moment.'
+              ? 'الذكاء الاصطناعي محدود حالياً. يرجى المحاولة بعد لحظات.'
               : hasImages
-                ? 'Image analysis failed. Please verify the uploaded image URL is accessible and try again.'
-                : 'AI service is temporarily unavailable. Please try again.';
+                ? 'فشل تحليل الصورة. تأكد من أن الصورة محملة بشكل صحيح وأعد المحاولة.'
+                : 'خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.';
 
       return NextResponse.json(
         {

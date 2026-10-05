@@ -1,8 +1,8 @@
 # ✨ Nova AI — Production-Ready AI Platform
 
-A full-stack, premium AI web platform inspired by ChatGPT, Midjourney & Runway — powered by the **Blackbox AI API**.
+A full-stack, premium AI web platform inspired by ChatGPT, Midjourney & Runway — powered by the **Bynara AI API** (OpenAI-compatible) + **Pollinations.ai** for images/video.
 
-Built with **Next.js 14 (App Router)**, **TypeScript**, **MongoDB**, **Tailwind CSS**, and **Framer Motion**.
+Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, and **Framer Motion**.
 
 ---
 
@@ -58,7 +58,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **MongoDB**, **Tailwind 
 | Markdown     | react-markdown + react-syntax-highlighter + remark-gfm       |
 | Database     | MongoDB (Mongoose)                                           |
 | Auth         | JWT (jsonwebtoken) + bcryptjs, httpOnly cookies              |
-| AI Backend   | Blackbox AI (OpenAI-compatible) — chat, image, video         |
+| AI Backend   | Bynara AI (chat + vision) + Pollinations.ai (images/video, free)          |
 
 ---
 
@@ -99,7 +99,7 @@ ai-platform/
 │   ├── lib/
 │   │   ├── mongodb.ts
 │   │   ├── auth.ts
-│   │   ├── blackbox.ts       # Blackbox AI API client
+│   │   ├── blackbox.ts       # Bynara AI + Pollinations client
 │   │   ├── rateLimit.ts
 │   │   └── utils.ts
 │   ├── models/
@@ -119,7 +119,7 @@ ai-platform/
 - **MongoDB** — either:
   - Local install (`mongod` running on `mongodb://localhost:27017`), **or**
   - Free cloud cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register)
-- A **Blackbox AI API key** — already configured for you.
+- A **Bynara AI API key** from [router.bynara.id](https://router.bynara.id).
 
 ### 2. Install dependencies
 
@@ -133,10 +133,10 @@ npm install
 A `.env.local` file is already created for you. Verify it contains:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/ai-platform
 JWT_SECRET=please-change-this-to-a-super-secret-random-string-min-32-chars-0123456789
-BLACKBOX_API_KEY=sk-P0gGry4ZHskwTEqzM7T6iA
-BLACKBOX_API_URL=https://api.blackbox.ai
+BYNARA_API_KEY=sk-your-byNara-api-key
+BYNARA_BASE_URL=https://router.bynara.id
+BYNARA_DEFAULT_MODEL=agnes-3-flash
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 RATE_LIMIT_PER_MINUTE=30
 
@@ -190,26 +190,19 @@ npm start
 
 ---
 
-## 🔌 Blackbox AI Integration
+## 🔌 Bynara AI + Pollinations Integration
 
-All calls happen **server-side** in `src/lib/blackbox.ts`:
+All AI calls happen **server-side** in `src/lib/blackbox.ts`:
 
-- `chatCompletion()` — POSTs to `https://api.blackbox.ai/chat/completions` (OpenAI-compatible).
-- `generateImage()` — POSTs to `/images/generations`, with a fallback that parses image URLs from a chat completion if the direct endpoint is unavailable.
-- `generateVideo()` — POSTs to `/video/generations`, with a similar fallback.
+- `chatCompletion()` — POSTs to Bynara's OpenAI-compatible endpoint for chat & vision (text + images).
+- `generateImage()` — uses Pollinations.ai Flux (free, no API key needed).
+- `generateVideo()` — uses Pollinations.ai with a frame-slideshow fallback.
+- `editImage()` — combines Bynara vision to describe the source image, then generates a new image via Pollinations.
 
-Model IDs used (change in `src/lib/blackbox.ts`):
-
-```ts
-export const MODELS = {
-  chat:     'blackboxai/openai/gpt-4',
-  chatFast: 'blackboxai/anthropic/claude-3.5-sonnet',
-  image:    'blackboxai/black-forest-labs/flux-1-schnell',
-  video:    'blackboxai/stability-ai/stable-video-diffusion',
-};
-```
+Default model: `agnes-3-flash` (supports vision). Override with `BYNARA_DEFAULT_MODEL`.
 
 ### Vision (image-in-chat)
+
 When the user uploads images, messages are sent using OpenAI's multimodal format:
 ```json
 {
@@ -220,6 +213,7 @@ When the user uploads images, messages are sent using OpenAI's multimodal format
   ]
 }
 ```
+Local `/uploads/...` paths are automatically converted to base64 data URIs so the external model can read them.
 
 ---
 

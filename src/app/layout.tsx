@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { ToastProvider } from '@/components/Toast';
@@ -7,13 +7,14 @@ export const metadata: Metadata = {
   title: 'Nova AI — Chat, Images & Video',
   description:
     'A premium AI platform. Chat with AI, generate images and videos, all in one beautifully crafted dark-mode experience.',
-  keywords: ['AI', 'ChatGPT', 'Image Generation', 'Video Generation', 'Blackbox AI'],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: 'cover',
-  },
+  keywords: ['AI', 'ChatGPT', 'Image Generation', 'Video Generation', 'Bynara AI'],
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
 };
 
 function getLocale(): 'ar' | 'en' {

@@ -25,7 +25,7 @@ const ALLOWLIST = [
   'fal.media',
   'cdn.openai.com',
   'oaidalleapiprodscus.blob.core.windows.net',
-  'api.blackbox.ai',
+  'router.bynara.id',
 ];
 
 export async function GET(req: NextRequest) {

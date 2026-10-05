@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
  * pipeline (text-guided), a true face-swap isn't possible via a single
  * reference image URL. We construct a descriptive prompt that asks for a
  * face from the reference (by URL) placed on the source subject, which
- * gives a best-effort stylistic result. When the Blackbox vision chat is
+ * gives a best-effort stylistic result. When the Bynara vision chat is
  * available, the model can follow both images; otherwise Pollinations
  * applies the prompt to the source image only.
  */
