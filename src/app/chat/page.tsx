@@ -88,28 +88,64 @@ export default function ChatPage() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setSending(true);
+
+    // Optimistic empty assistant message — gets filled as tokens stream in
+    const initialLen = setMessages((prev) => {
+      return [
+        ...prev,
+        { role: 'assistant', content: '', createdAt: new Date().toISOString() },
+      ];
+    });
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId,
-          message: text,
-          images,
-        }),
+        body: JSON.stringify({ conversationId, message: text, images }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل الحصول على الرد');
-      setConversationId(data.conversationId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: data.message.content,
-          createdAt: data.message.createdAt,
-          botAvatarUrl,
-        },
-      ]);
+      const convId = res.headers.get('x-conversation-id') || undefined;
+      if (convId) setConversationId(convId);
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'فشل الحصول على الرد');
+      }
+
+      // Read SSE stream: each event is a text chunk
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let streamed = '';
+      let buffer = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed && typeof parsed === 'string') streamed += parsed;
+            } catch {
+              // raw string data — append directly
+              streamed += payload;
+            }
+          }
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === 'assistant') {
+              next[next.length - 1] = { ...last, content: streamed, botAvatarUrl };
+            }
+            return next;
+          });
+        }
+      }
+
       setRefreshKey((k) => k + 1);
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ غير متوقع');
@@ -118,6 +154,7 @@ export default function ChatPage() {
         {
           role: 'assistant',
           content: `⚠️ **خطأ**: ${err.message || 'حدث خطأ غير متوقع.'}`,
+          createdAt: new Date().toISOString(),
         },
       ]);
     } finally {
@@ -135,40 +172,69 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMsg]);
     setSending(true);
 
+    setMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: '', createdAt: new Date().toISOString() },
+    ]);
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId, message: text, images: [] }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل الحصول على الرد');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'فشل الحصول على الرد');
+      }
 
-      setConversationId(data.conversationId);
-      const assistantText = data.message?.content || '';
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: assistantText,
-          createdAt: data.message.createdAt,
-          botAvatarUrl,
-        },
-      ]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let streamed = '';
+      let buffer = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed && typeof parsed === 'string') streamed += parsed;
+            } catch {
+              streamed += payload;
+            }
+          }
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === 'assistant') {
+              next[next.length - 1] = { ...last, content: streamed, botAvatarUrl };
+            }
+            return next;
+          });
+        }
+      }
+
+      setConversationId(res.headers.get('x-conversation-id') || conversationId);
       setRefreshKey((k) => k + 1);
-      return assistantText;
+      return streamed;
     } catch (err: any) {
       const message = err.message || 'حدث خطأ في الاتصال الصوتي';
       toast.error(message);
-      const fallback = `⚠️ **خطأ**: ${message}`;
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: fallback,
+          content: `⚠️ **خطأ**: ${message}`,
+          createdAt: new Date().toISOString(),
         },
       ]);
-      return fallback;
+      return `⚠️ ${message}`;
     } finally {
       setSending(false);
     }

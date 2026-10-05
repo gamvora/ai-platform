@@ -279,6 +279,37 @@ export function friendlyBynaraError(raw: string): string {
   return raw.slice(0, 300);
 }
 
+/** Compress a base64 data URL image to max 800px on the longest side (JPEG ~60%).
+ * Reduces payload from ~2-5 MB down to ~100-300 KB — huge win for vision APIs. */
+export async function compressImage(dataUrl: string, maxSizePx = 800): Promise<string> {
+  if (!dataUrl.startsWith('data:')) return dataUrl;
+  try {
+    const ctx = document?.createElement('canvas')?.getContext('2d');
+    if (!ctx) return dataUrl; // SSR fallback
+
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('image load failed'));
+    });
+
+    let { width, height } = img;
+    if (width > maxSizePx || height > maxSizePx) {
+      const ratio = Math.min(maxSizePx / width, maxSizePx / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    ctx.canvas.width = width;
+    ctx.canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+    return ctx.canvas.toDataURL('image/jpeg', 0.7);
+  } catch {
+    return dataUrl; // return original on error
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Chat (Bynara — OpenAI-compatible)
 // ---------------------------------------------------------------------------
@@ -313,6 +344,58 @@ export async function chatCompletion(opts: ChatCompletionOptions) {
     );
   }
   return res;
+}
+
+/** Stream a chat completion — yields text chunks as they arrive (SSE). */
+export async function* streamChatCompletion(opts: ChatCompletionOptions) {
+  if (!BYNARA_API_KEY) throw new Error('BYNARA_API_KEY is not configured.');
+
+  const res = await fetch(`${BYNARA_BASE_URL}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${BYNARA_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: opts.model || MODELS.chat,
+      messages: opts.messages,
+      temperature: opts.temperature ?? 0.7,
+      max_tokens: opts.max_tokens ?? 2048,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(friendlyBynaraError(errText));
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response body');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? ''; // keep incomplete line in buffer
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      const data = trimmed.slice(5).trim();
+      if (data === '[DONE]') return;
+      try {
+        const json = JSON.parse(data);
+        const content = json?.choices?.[0]?.delta?.content;
+        if (content) yield content;
+      } catch { /* skip malformed lines */ }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

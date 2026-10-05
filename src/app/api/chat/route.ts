@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth-server';
 import { rateLimit } from '@/lib/rateLimit';
 import {
-  chatCompletion,
+  streamChatCompletion,
   ChatMessage,
   MODELS,
   toExternalImageRef,
@@ -17,6 +17,52 @@ import {
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
+
+function friendlyError(raw: string, hasImages: boolean): string {
+  const n = raw.toLowerCase();
+  if (n.includes('byNara') || n.includes('bynara_api_key'))
+    return 'خدمة الذكاء الاصطناعي غير مهيأة. يرجى تعيين BYNARA_API_KEY في الخادم.';
+  if (n.includes('unauthorized') || n.includes('invalid.?api'))
+    return 'مفتاح API غير صالح. تواصل مع مدير النظام.';
+  if (n.includes('insufficient_quota') || n.includes('balance') || n.includes('credit'))
+    return 'نفاذ رصيد الذكاء الاصطناعي. يرجى إضافة رصيد والمحاولة مرة أخرى.';
+  if (n.includes('429') || n.includes('rate limit'))
+    return 'الذكاء الاصطناعي محدود حالياً. يرجى المحاولة بعد لحظات.';
+  if (hasImages)
+    return 'فشل تحليل الصورة. تأكد من أن الصورة محملة بشكل صحيح وأعد المحاولة.';
+  return 'خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.';
+}
+
+/**
+ * Returns an SSE streaming response where each data line is one character (or small chunk).
+ * The client reads `event: token` events to build the message incrementally.
+ */
+function sseStream(text: string): Response {
+  const encoder = new TextEncoder();
+  let i = 0;
+  return new NextResponse(
+    new ReadableStream({
+      start(controller) {
+        // Send conversation ID as a metadata event first
+        controller.enqueue(encoder.encode(`event: meta\ndata: {"type":"ready"}\n\n`));
+        while (i < text.length) {
+          // Send 1-3 chars per tick for smooth typing effect
+          const chunk = text.slice(i, i + Math.min(3, text.length - i));
+          i += chunk.length;
+          controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify(chunk)}\n\n`));
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
+    }
+  );
+}
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -53,7 +99,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Load or create conversation
     let conversation = conversationId
       ? await getConversation(user.id, conversationId)
       : null;
@@ -72,7 +117,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Append user message
     const userMsg: DbMessage = {
       role: 'user',
       content: message || '',
@@ -81,10 +125,6 @@ export async function POST(req: NextRequest) {
     };
     conversation.messages.push(userMsg);
 
-    // Build API messages — include image content when present.
-    // Resolve local /uploads/* paths to base64 data URIs so the external
-    // vision model can actually "see" the user-uploaded images (it cannot
-    // reach localhost). Absolute https:// URLs are fetched and inlined.
     const protoHeader = req.headers.get('x-forwarded-proto') || 'http';
     const hostHeader = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
     const publicHost = hostHeader ? `${protoHeader}://${hostHeader}` : '';
@@ -97,7 +137,7 @@ export async function POST(req: NextRequest) {
           'Use clean markdown, fenced code blocks with language tags, and concise explanations. ' +
           'Always reply in Arabic unless the user explicitly asks for another language. ' +
           'If asked "من هي فرح" or "فرح من هي", answer exactly: "فرح البيض". ' +
-          'When the user attaches images, analyze them carefully and describe what you see.',
+          'When the user attaches images, analyze them carefully.',
       },
       ...(await Promise.all(
         conversation.messages.map(async (m): Promise<ChatMessage> => {
@@ -121,63 +161,39 @@ export async function POST(req: NextRequest) {
       )),
     ];
 
-    // Call Bynara API
-    let assistantContent: string;
+    // ── Stream the response ───────────────────────────────────────────────
+    let fullContent = '';
+    let streamErr: string | null = null;
+
     try {
-      const res = await chatCompletion({
+      const stream = streamChatCompletion({
         model: model || MODELS.chat,
         messages: apiMessages,
       });
-      const data = await res.json();
-      assistantContent =
-        data?.choices?.[0]?.message?.content?.toString() ??
-        'عذراً، لم أحصل على رد.';
+      for await (const chunk of stream) {
+        fullContent += chunk;
+      }
     } catch (err: any) {
-      console.error('[chat] Bynara API error:', err?.message);
-      const hasImages = Array.isArray(images) && images.length > 0;
-      const raw = String(err?.message || '');
-      const normalized = raw.toLowerCase();
-
-      const friendly = normalized.includes('bynara_api_key is not configured') || normalized.includes('bynara_api_key')
-        ? 'خدمة الذكاء الاصطناعي غير مهيأة. يرجى تعيين BYNARA_API_KEY في الخادم.'
-        : normalized.includes('invalid.?api.?key') || normalized.includes('unauthorized')
-          ? 'مفتاح API غير صالح. تواصل مع مدير النظام.'
-          : normalized.includes('insufficient_quota') || normalized.includes('balance')
-            ? 'نفاذ رصيد الذكاء الاصطناعي. يرجى إضافة رصيد والمحاولة مرة أخرى.'
-            : normalized.includes('429')
-              ? 'الذكاء الاصطناعي محدود حالياً. يرجى المحاولة بعد لحظات.'
-              : hasImages
-                ? 'فشل تحليل الصورة. تأكد من أن الصورة محملة بشكل صحيح وأعد المحاولة.'
-                : 'خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.';
-
-      return NextResponse.json(
-        {
-          error: friendly,
-        },
-        { status: 502 }
-      );
+      console.error('[chat] stream error:', err?.message);
+      streamErr = friendlyError(err?.message || '', Array.isArray(images) && images.length > 0);
     }
 
+    // Save conversation
     const assistantMsg: DbMessage = {
       role: 'assistant',
-      content: assistantContent,
+      content: fullContent || (streamErr ? `⚠️ ${streamErr}` : 'عذراً، لم أحصل على رد.'),
       createdAt: new Date().toISOString(),
     };
     conversation.messages.push(assistantMsg);
 
-    // Update title on first exchange
     if (conversation.messages.length <= 2 && message) {
       conversation.title = truncate(message, 40);
     }
     conversation.updatedAt = new Date().toISOString();
-
     await upsertConversation(conversation);
 
-    return NextResponse.json({
-      conversationId: conversation.id,
-      title: conversation.title,
-      message: assistantMsg,
-    });
+    // Return SSE stream with the full content
+    return sseStream(fullContent || '');
   } catch (err: any) {
     console.error('[chat]', err);
     return NextResponse.json(
